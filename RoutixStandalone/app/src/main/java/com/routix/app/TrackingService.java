@@ -53,7 +53,7 @@ public final class TrackingService extends Service implements LocationListener {
             int gReverse=(int)parseLong(journal.readState("guidance_reverse","0"),0),gTwo=(int)parseLong(journal.readState("guidance_two_sides","0"),0);
             RouteStore.Summary recovered=file.isEmpty()?null:store.parse(new File(store.routesDir(),new File(file).getName()));boolean validGuidance=recovered!=null&&recovered.points.size()>1;
             if(!file.isEmpty()&&!validGuidance){journal.state("guidance","");journal.state("progress","0");DiagnosticLog.info("stale guidance checkpoint cleared");}
-            main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++)distance+=RouteNormalizer.distanceM(points.get(i-1),points.get(i));
+            main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++){RouteStore.Point a=points.get(i-1),b=points.get(i);if(!b.breakBefore&&(a.time<=0||b.time<=0||(b.time>=a.time&&b.time-a.time<=30000)))distance+=RouteNormalizer.distanceM(a,b);}
                 if(validGuidance){guidanceStartedAt=gStarted>0?gStarted:System.currentTimeMillis();guidanceTravelDistance=Math.max(0,gDistance);guidanceReverseAdded=Math.max(0,gReverse);guidanceTwoSidesAdded=Math.max(0,gTwo);installGuidance(recovered,progress);}
                 ready=true;if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
         }catch(Exception ex){DiagnosticLog.error("session recovery",ex);main.post(()->{if(closed)return;ready=true;if(foreground&&!recording&&guidance==null)idle();publish();if(visible&&!subscribed)subscribe();});}});
@@ -90,13 +90,13 @@ public final class TrackingService extends Service implements LocationListener {
     private void persistProgress(float progress,boolean force){long now=SystemClock.elapsedRealtime();if(!force&&now-lastProgressWriteMs<4000&&lastProgressWriteM>=0&&Math.abs(progress-lastProgressWriteM)<12f)return;lastProgressWriteMs=now;lastProgressWriteM=progress;write(()->journal.state("progress",Float.toString(progress)));}
     private void persistGuidanceStats(boolean force){if(guidance==null&&!force)return;long now=SystemClock.elapsedRealtime();if(!force&&now-lastStatsWriteMs<15000)return;lastStatsWriteMs=now;long start=guidanceStartedAt;double dist=guidanceTravelDistance;int rev=guidanceReverseAdded,two=guidanceTwoSidesAdded;write(()->{journal.state("guidance_started",Long.toString(start));journal.state("guidance_distance",Double.toString(dist));journal.state("guidance_reverse",Integer.toString(rev));journal.state("guidance_two_sides",Integer.toString(two));});}
 
-    boolean beginRecording(){if(!ready||saving||recording||!activate())return false;points.clear();events.clear();distance=0;lastAcceptedRecordFix=null;recordFilter.reset();routeAware.reset();streetPassages.resetSession();started=System.currentTimeMillis();recording=true;paused=false;long start=started;write(()->{journal.clearRecording();journal.state("started",Long.toString(start));journal.state("recording","true");store.clearDraft();});requestProfile(GPS_MOVING);publish();return true;}
+    boolean beginRecording(){if(!ready||saving||recording||guidance!=null||!activate())return false;points.clear();events.clear();distance=0;lastAcceptedRecordFix=null;recordFilter.reset();routeAware.reset();streetPassages.resetSession();started=System.currentTimeMillis();recording=true;paused=false;long start=started;write(()->{journal.clearRecording();journal.state("started",Long.toString(start));journal.state("recording","true");store.clearDraft();});requestProfile(GPS_MOVING);publish();return true;}
     void recoverDraft(RouteStore.Summary draft){if(!beginRecording())return;points.addAll(draft.points);events.addAll(draft.events);distance=draft.distanceM;started=draft.firstTime;List<RouteStore.Point> p=new ArrayList<>(points);List<RouteStore.Event> e=new ArrayList<>(events);long start=started;write(()->{journal.state("started",Long.toString(start));for(RouteStore.Point x:p)journal.point(x);for(RouteStore.Event x:e)journal.event(x);});publish();}
-    void togglePause(){if(!recording||saving)return;paused=!paused;boolean value=paused;write(()->journal.state("paused",Boolean.toString(value)));saveDraft();publish();}
+    void togglePause(){if(!recording||saving)return;paused=!paused;if(!paused){lastAcceptedRecordFix=null;recordFilter.reset();routeAware.reset();}boolean value=paused;write(()->journal.state("paused",Boolean.toString(value)));saveDraft();publish();}
     void addEvent(String type,String label){if(!recording||paused||location==null)return;RouteStore.Event e=new RouteStore.Event(type,label,location.getLatitude(),location.getLongitude(),System.currentTimeMillis(),location.getAccuracy());events.add(e);write(()->journal.event(e));publish();}
     void finish(java.util.function.Consumer<File> result){if(saving||points.size()<2)return;saving=true;boolean wasPaused=paused;paused=true;List<RouteStore.Point> p=new ArrayList<>(points);List<RouteStore.Event> e=new ArrayList<>(events);long start=started;publish();io.execute(()->{File f=null;try{f=store.createRoute(p,e,start);if(f!=null){journal.clearRecording();store.clearDraft();streetPassages.save(f.getName());}}catch(RuntimeException ex){DiagnosticLog.error("finish recording",ex);}File saved=f;main.post(()->{saving=false;if(saved!=null){recording=false;paused=false;points.clear();events.clear();distance=0;idle();}else paused=wasPaused;publish();result.accept(saved);});});}
 
-    void beginGuidance(RouteStore.Summary s){if(!ready||s==null||s.points.size()<2||!activate())return;
+    void beginGuidance(RouteStore.Summary s){if(!ready||recording||guidance!=null||s==null||s.points.size()<2||!activate())return;
         guidanceStartedAt=System.currentTimeMillis();guidanceTravelDistance=0;lastAcceptedGuidanceFix=null;guidanceReverseAdded=0;guidanceTwoSidesAdded=0;lastStatsWriteMs=0;
         installGuidance(s,0);String name=s.file.getName();long start=guidanceStartedAt;write(()->{journal.state("progress","0");journal.state("guidance",name);journal.state("guidance_started",Long.toString(start));journal.state("guidance_distance","0");journal.state("guidance_reverse","0");journal.state("guidance_two_sides","0");});requestProfile(GPS_MOVING);publish();
     }
@@ -141,14 +141,14 @@ public final class TrackingService extends Service implements LocationListener {
 
         try{if(recording&&!paused&&!saving&&fix.getAccuracy()<=prefs.getInt("record_accuracy",45)){
             Location ref=lastAcceptedRecordFix;long dt=ref==null?0:(fix.getElapsedRealtimeNanos()-ref.getElapsedRealtimeNanos())/1_000_000L;
-            boolean plausible=ref==null||GpsMovementFilter.plausible(ref.distanceTo(fix),dt,ref.getAccuracy(),fix.getAccuracy());
+            boolean gap=!points.isEmpty()&&(ref==null||dt>30000);if(gap){recordFilter.reset();routeAware.reset();}boolean plausible=gap||ref==null||GpsMovementFilter.plausible(ref.distanceTo(fix),dt,ref.getAccuracy(),fix.getAccuracy());
             if(plausible){
                 Location filtered=recordFilter.update(fix);RouteAwareAnalyzer.Observation road=routeAware.update(filtered,roadContext.nearby(filtered));Location smart=road.snapped?road.location:filtered;
-                RouteStore.Point p=new RouteStore.Point(smart.getLatitude(),smart.getLongitude(),fix.getTime(),smart.getAccuracy());
-                double d=points.isEmpty()?0:RouteNormalizer.distanceM(points.get(points.size()-1),p);streetPassages.observe(road,fix.getTime(),d);
+                RouteStore.Point p=new RouteStore.Point(smart.getLatitude(),smart.getLongitude(),fix.getTime(),smart.getAccuracy(),gap);
+                double d=points.isEmpty()||gap?0:RouteNormalizer.distanceM(points.get(points.size()-1),p);streetPassages.observe(road,fix.getTime(),d);
                 // Adaptive spacing: dense at low speed/corners, slightly wider at road speed.
                 double spacing=prefs.getInt("record_spacing",2);if(fix.hasSpeed())spacing=Math.max(spacing,Math.min(5.0,1.5+fix.getSpeed()*.10));
-                if(points.isEmpty()||d>=spacing){distance+=d;points.add(p);write(()->journal.point(p));}
+                if(points.isEmpty()||gap||d>=spacing){distance+=d;points.add(p);write(()->journal.point(p));}
                 // Plausibility must reference the accepted RAW fix, not the filtered coordinate.
                 lastAcceptedRecordFix=new Location(fix);
             }
