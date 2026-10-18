@@ -4,7 +4,6 @@ import android.content.Context;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Locale;
 
 /** Exports real route geometry without connecting GPS segments across outages. */
 final class RouteExporter {
@@ -27,13 +26,13 @@ final class RouteExporter {
     private static void csv(Writer w,RouteStore.Summary r)throws IOException{
         w.write("kind,time_utc,latitude,longitude,accuracy_m,segment_start,type,label\n");
         for(RouteStore.Point p:r.points){
-            w.write("point,");w.write(RouteStore.iso(p.time));w.write(',');
+            w.write("point,");w.write(p.time>0?RouteStore.iso(p.time):"");w.write(',');
             w.write(Double.toString(p.lat));w.write(',');w.write(Double.toString(p.lon));w.write(',');
             w.write(Float.toString(p.accuracy));w.write(',');w.write(p.breakBefore?"true":"false");
             w.write(",,\n");
         }
         for(RouteStore.Event e:r.events){
-            w.write("event,");w.write(RouteStore.iso(e.time));w.write(',');
+            w.write("event,");w.write(e.time>0?RouteStore.iso(e.time):"");w.write(',');
             w.write(Double.toString(e.lat));w.write(',');w.write(Double.toString(e.lon));w.write(',');
             w.write(Float.toString(e.accuracy));w.write(",,");
             cell(w,e.type);w.write(',');cell(w,e.label);w.write('\n');
