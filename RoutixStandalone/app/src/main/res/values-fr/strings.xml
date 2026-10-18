@@ -22,4 +22,14 @@
     <string name="menu_updates">Mises à jour</string>
     <string name="menu_diagnostics">Exporter le diagnostic</string>
     <string name="menu_plan_beta">Plan vers parcours (bêta)</string>
+    <string name="notification_active">Routix · tournée active</string>
+    <string name="notification_open">Toucher pour reprendre</string>
+    <string name="notification_recording">Enregistrement en cours</string>
+    <string name="notification_paused">Enregistrement en pause</string>
+    <string name="notification_points">%1$d points GPS</string>
+    <string name="notification_gps_lost">Signal GPS perdu</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_resume">Reprendre</string>
+    <string name="notification_save">Enregistrer</string>
+    <string name="notification_stop">Arrêter le guidage</string>
 </resources>

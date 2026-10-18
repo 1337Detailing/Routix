@@ -24,6 +24,8 @@ public final class TrackingService extends Service implements LocationListener {
 
     long guidanceStartedAt;double guidanceTravelDistance;int guidanceReverseAdded,guidanceTwoSidesAdded;
 
+    static final String ACTION_PAUSE="com.routix.app.action.PAUSE",ACTION_RESUME="com.routix.app.action.RESUME",ACTION_SAVE="com.routix.app.action.SAVE",ACTION_STOP_GUIDANCE="com.routix.app.action.STOP_GUIDANCE";
+    private String deferredAction;
     private static final int GPS_IDLE=0,GPS_MOVING=1,GPS_STATIONARY=2;
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService io=Executors.newSingleThreadExecutor();
@@ -55,22 +57,43 @@ public final class TrackingService extends Service implements LocationListener {
             if(!file.isEmpty()&&!validGuidance){journal.state("guidance","");journal.state("progress","0");DiagnosticLog.info("stale guidance checkpoint cleared");}
             main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++){RouteStore.Point a=points.get(i-1),b=points.get(i);if(!b.breakBefore&&(a.time<=0||b.time<=0||(b.time>=a.time&&b.time-a.time<=30000)))distance+=RouteNormalizer.distanceM(a,b);}
                 if(validGuidance){guidanceStartedAt=gStarted>0?gStarted:System.currentTimeMillis();guidanceTravelDistance=Math.max(0,gDistance);guidanceReverseAdded=Math.max(0,gReverse);guidanceTwoSidesAdded=Math.max(0,gTwo);installGuidance(recovered,progress);}
-                ready=true;if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
+                ready=true;if(deferredAction!=null){String action=deferredAction;deferredAction=null;applyNotificationAction(action);}if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
         }catch(Exception ex){DiagnosticLog.error("session recovery",ex);main.post(()->{if(closed)return;ready=true;if(foreground&&!recording&&guidance==null)idle();publish();if(visible&&!subscribed)subscribe();});}});
         main.postDelayed(draft,30000);
     }
 
     @Override public IBinder onBind(Intent intent){return new LocalBinder();}
     @Override public int onStartCommand(Intent intent,int flags,int id){
-        try{promote();if(ready)subscribe();return START_STICKY;}catch(RuntimeException e){DiagnosticLog.error("foreground start",e);stopSelf();return START_NOT_STICKY;}
+        try{promote();String action=intent==null?null:intent.getAction();if(action!=null){if(ready)applyNotificationAction(action);else deferredAction=action;}if(ready)subscribe();return START_STICKY;}catch(RuntimeException e){DiagnosticLog.error("foreground start",e);stopSelf();return START_NOT_STICKY;}
+    }
+    private void applyNotificationAction(String action){
+        if(ACTION_PAUSE.equals(action)&&recording&&!paused)togglePause();
+        else if(ACTION_RESUME.equals(action)&&recording&&paused)togglePause();
+        else if(ACTION_SAVE.equals(action)&&recording&&!saving){
+            if(points.size()>=2)finish(file->{if(file==null)DiagnosticLog.info("notification save unsuccessful; session retained");});
+            else {if(!paused)togglePause();DiagnosticLog.info("notification save deferred: fewer than two fixes");}
+        }else if(ACTION_STOP_GUIDANCE.equals(action)&&guidance!=null)stopGuidance();
+    }
+    private PendingIntent notificationAction(String action,int code){
+        Intent i=new Intent(this,TrackingService.class).setAction(action);
+        return PendingIntent.getService(this,code,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
     }
     private Notification trackingNotification(){
         Intent open=new Intent(this,RoutixActivity.class);PendingIntent pending=PendingIntent.getActivity(this,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        String title="Routix · tournée active",text="Suivi GPS adaptatif actif. Toucher pour reprendre.";int progress=0;
+        String title=getString(R.string.notification_active),text=getString(R.string.notification_open);int progress=0;
+        if(recording){title=getString(paused?R.string.notification_paused:R.string.notification_recording);
+            text=getString(R.string.notification_points,points.size());
+            if(location==null||SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos()>20_000_000_000L)text=getString(R.string.notification_gps_lost);
+        }
         if(guidance!=null&&guidanceState!=null){progress=guidanceState.progressPercent;title="Routix · "+progress+" %";text=formatIslandDistance(guidanceState.remainingM)+" restant";if(guidanceState.nextEvent!=null&&guidanceState.distanceToNextEventM<1000)text+=" · "+guidanceState.nextEvent.label;}
         NotificationCompat.Builder b=new NotificationCompat.Builder(this,"tracking").setSmallIcon(R.drawable.ic_tracking).setColor(RoutixTheme.from(this).accent).setContentTitle(title).setContentText(text).setContentIntent(pending).setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setCategory(NotificationCompat.CATEGORY_NAVIGATION);
         if(guidance!=null&&guidanceState!=null){String summary=formatIslandDistance(guidanceState.remainingM)+" · "+progress+" %";b.setSubText(summary);b.getExtras().putCharSequence("android.shortCriticalText",formatIslandDistance(guidanceState.remainingM));}
         if(guidance!=null)b.addExtras(NotificationCapsuleCompat.guidance(this,title,text,progress));
+        if(recording&&!saving){
+            boolean isPaused=paused;
+            b.addAction(0,getString(isPaused?R.string.notification_resume:R.string.notification_pause),notificationAction(isPaused?ACTION_RESUME:ACTION_PAUSE,101));
+            b.addAction(0,getString(R.string.notification_save),notificationAction(ACTION_SAVE,102));
+        }else if(guidance!=null)b.addAction(0,getString(R.string.notification_stop),notificationAction(ACTION_STOP_GUIDANCE,103));
         return b.build();
     }
     private static String formatIslandDistance(float meters){if(!Float.isFinite(meters))return "—";return meters>=1000?String.format(Locale.FRANCE,"%.1f km",meters/1000f):Math.round(Math.max(0,meters))+" m";}

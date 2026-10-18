@@ -22,4 +22,14 @@
     <string name="menu_updates">Updates</string>
     <string name="menu_diagnostics">Export diagnostic</string>
     <string name="menu_plan_beta">Plan to route (beta)</string>
+    <string name="notification_active">Routix · active route</string>
+    <string name="notification_open">Tap to open tracking</string>
+    <string name="notification_recording">Recording route</string>
+    <string name="notification_paused">Recording paused</string>
+    <string name="notification_points">%1$d GPS points</string>
+    <string name="notification_gps_lost">Waiting for GPS signal</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_resume">Resume</string>
+    <string name="notification_save">Save route</string>
+    <string name="notification_stop">Stop navigation</string>
 </resources>
