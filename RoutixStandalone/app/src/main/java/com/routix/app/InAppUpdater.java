@@ -2,7 +2,7 @@ package com.routix.app;
 import android.app.*;import android.content.*;import android.content.pm.PackageManager;import android.net.Uri;import androidx.core.content.FileProvider;import org.json.*;import java.io.*;import java.net.*;import java.util.*;import java.util.zip.*;
 /** In-app updater. Beta channel accepts only successful master builds from the official public repo. */
 final class InAppUpdater{
- static final String OWNER="1337Detailing",REPO="RoutePilot",WORKFLOW="Build Routix APK";private final Activity a;
+ static final String OWNER="1337Detailing",REPO="Routix",WORKFLOW="Build Routix APK";private final Activity a;
  interface Callback{void status(String text,int progress);void ready(Update u);void error(String message);}
  static final class Update{final long runId;final int runNumber;final long artifactId;final String sha;Update(long r,int n,long id,String s){runId=r;runNumber=n;artifactId=id;sha=s;}String version(){return "2.1."+runNumber+"-debug";}}
  InAppUpdater(Activity x){a=x;}
