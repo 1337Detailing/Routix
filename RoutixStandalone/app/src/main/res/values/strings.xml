@@ -32,4 +32,11 @@
     <string name="notification_resume">Resume</string>
     <string name="notification_save">Save route</string>
     <string name="notification_stop">Stop navigation</string>
+    <string name="recovery_channel">GPS recovery</string>
+    <string name="recovery_title">Route paused after reboot</string>
+    <string name="recovery_description">Open Routix to resume GPS tracking.</string>
+    <string name="menu_background_gps">Background GPS</string>
+    <string name="background_gps_explanation">Allow background location in Android app permissions to resume tracking after a restart. Android may still restrict background starts.</string>
+    <string name="menu_battery">Battery optimization</string>
+    <string name="battery_explanation">To prevent Android from suspending recording, allow Routix to run without battery restrictions.</string>
 </resources>

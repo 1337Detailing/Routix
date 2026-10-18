@@ -329,7 +329,9 @@ public class RoutixActivity extends AppCompatActivity {
         extra.addView(toggleRow("Animations riches","Échelle, rebond et apparition progressive des cartes.","rich_animations",true,()->{}));
         extra.addView(choiceRow("Précision GPS maximale","record_accuracy",new int[]{20,30,45,60},new String[]{"20 m","30 m","45 m","60 m"},45,()->{}));
         extra.addView(toggleRow("Optimiser les imports GPX","Recalage routier : peut modifier la trace d’origine.","gpx_match_roads",false,()->{}));
-        menu(extra,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
+        menu(extra,getString(R.string.menu_background_gps),"",this::openBackgroundGpsSettings);
+         menu(extra,getString(R.string.menu_battery),"",this::openBatterySettings);
+         menu(extra,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
     private void showMapStyleMenu(){new RoutixDialogs.Builder(this).setTitle("Fond de carte").setItems(new String[]{"Clair","Sombre"},(d,w)->{prefs.edit().putString("map_appearance",w==0?"light":"dark").putBoolean("auto_night",false).apply();applyMapStyle();}).show();}
     private void offlineMenu(){List<String> labels=new ArrayList<>();labels.add("Carte en ligne");for(FranceOfflineManager.Pack p:FranceOfflineManager.PACKS)labels.add(p.label+(FranceOfflineManager.isInstalled(this,p)?" • installé":" • télécharger"));new RoutixDialogs.Builder(this).setTitle("Cartes hors ligne").setItems(labels.toArray(new String[0]),(d,w)->{if(w==0){prefs.edit().remove("offline_pack").apply();applyMapStyle();return;}FranceOfflineManager.Pack pack=FranceOfflineManager.PACKS.get(w-1);if(FranceOfflineManager.isInstalled(this,pack)){prefs.edit().putString("offline_pack",pack.id).apply();applyMapStyle();toast("Carte hors ligne : "+pack.label);}else try{FranceOfflineManager.download(this,pack);toast("Téléchargement lancé. Sélectionne le pack une fois terminé.");}catch(RuntimeException e){DiagnosticLog.error("offline download",e);toast("Téléchargement indisponible");}}).show();}
     private void updateMenu(){
@@ -352,6 +354,24 @@ public class RoutixActivity extends AppCompatActivity {
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(14),dp(18),dp(14));TextView state=text("Téléchargement…",14,Typeface.BOLD,TEXT);android.widget.ProgressBar bar=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);bar.setMax(100);box.addView(state);LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(8));bp.topMargin=dp(14);box.addView(bar,bp);AlertDialog wait=new RoutixDialogs.Builder(this).setTitle("Installation bêta").setView(box).setNegativeButton("Masquer",null).create();wait.show();RoutixDialogs.style(wait,this);updater.downloadAndInstall(u,new InAppUpdater.Callback(){public void status(String s,int p){state.setText(s);bar.setProgress(p);}public void ready(InAppUpdater.Update ignored){}public void error(String m){if(wait.isShowing())wait.dismiss();new RoutixDialogs.Builder(RoutixActivity.this).setTitle("Téléchargement impossible").setMessage(m).setPositiveButton("OK",null).show();}});
     }
 
+    private void openBackgroundGpsSettings(){
+        new RoutixDialogs.Builder(this).setTitle(R.string.menu_background_gps)
+            .setMessage(R.string.background_gps_explanation)
+            .setNegativeButton(android.R.string.cancel,null)
+            .setPositiveButton(R.string.permission_settings,(d,w)->{
+                Intent i=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:"+getPackageName()));
+                startActivity(i);
+            }).show();
+    }
+    private void openBatterySettings(){
+        new RoutixDialogs.Builder(this).setTitle(R.string.menu_battery)
+            .setMessage(R.string.battery_explanation)
+            .setNegativeButton(android.R.string.cancel,null)
+            .setPositiveButton(R.string.permission_settings,(d,w)->
+                startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)))
+            .show();
+    }
     private void exportDiagnostics(){try{File f=DiagnosticLog.export(this);Intent i=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM,FileProvider.getUriForFile(this,getPackageName()+".files",f)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Rapport Routix"));}catch(Exception e){DiagnosticLog.error("export diagnostic",e);toast("Export impossible");}}
 
     private View colorSettingRow(String title,String key,int def,Runnable changed){
