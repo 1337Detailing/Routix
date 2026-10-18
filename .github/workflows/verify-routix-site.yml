@@ -1,0 +1,55 @@
+name: Verify Routix Website
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'site/**'
+      - '.github/workflows/verify-routix-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate website JavaScript
+        run: node --check docs/app.js && node --check site/app.js
+      - name: Validate links and assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import xml.etree.ElementTree as ET
+
+          class Check(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = set()
+                  self.anchors = []
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if 'id' in attrs:
+                      assert attrs['id'] not in self.ids, 'duplicate ID'
+                      self.ids.add(attrs['id'])
+                  if tag == 'a' and 'href' in attrs:
+                      self.anchors.append(attrs['href'])
+
+          for folder in ('docs', 'site'):
+              root = Path(folder)
+              parser = Check()
+              parser.feed((root / 'index.html').read_text(encoding='utf-8'))
+              for link in parser.anchors:
+                  if link.startswith('#') and link != '#':
+                      assert link[1:] in parser.ids, (folder, link)
+              for file in ('styles.css', 'app.js', 'assets/favicon.svg', 'assets/og-cover.svg'):
+                  assert (root / file).is_file(), (folder, file)
+              for file in ('assets/favicon.svg', 'assets/og-cover.svg'):
+                  ET.parse(root / file)
+          print('Both Routix site trees validated')
+          PY

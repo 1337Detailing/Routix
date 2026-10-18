@@ -1,149 +1,177 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1e1e2e">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="Routix : enregistrement GPS, guidage de tournées, cartes hors ligne et partage GPX sur Android.">
-  <meta property="og:title" content="Routix — Tes tournées. Ton chemin.">
-  <meta property="og:description" content="Enregistre. Retrouve. Repars. Tes tournées de collecte sur Android.">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="Routix, l’application Android pensée pour les tournées terrain. Enregistre tes parcours, ajoute des repères, suis ta trace et prépare tes plans de tournée.">
   <meta property="og:type" content="website">
-  <title>Routix — Tes tournées. Ton chemin.</title>
-  <style>
-    :root{--base:#1e1e2e;--mantle:#181825;--text:#cdd6f4;--muted:#a6adc8;--line:#45475a;--mauve:#cba6f7;--pink:#f5c2e7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387;--yellow:#f9e2af}
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth;scroll-padding-top:100px}
-    body{margin:0;background:var(--base);color:var(--text);font-family:Inter,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
-    ::selection{background:var(--mauve);color:var(--mantle)}
-    a{color:inherit;text-decoration:none}
-    button{font:inherit}
-    a:focus-visible,summary:focus-visible{outline:3px solid var(--peach);outline-offset:7px}
-    .wrap{width:min(1180px,calc(100% - 64px));margin-inline:auto}
-    .skip{position:fixed;top:-100px;left:20px;padding:16px;background:var(--text);color:var(--base);z-index:10}.skip:focus{top:10px}
-    header{border-bottom:1px solid var(--line)}
-    nav{min-height:94px;display:flex;align-items:center;justify-content:space-between;gap:24px}
-    .brand{font-size:29px;font-weight:850;letter-spacing:-1.5px}.brand span{color:var(--mauve)}
-    .navlinks{display:flex;align-items:center;gap:36px;font-size:14px;font-weight:600}
-    .navlinks a{padding-block:14px;transition:color .2s}.navlinks a:hover{color:var(--mauve)}
-    .navlinks .github{border:1px solid var(--line);border-radius:100px;padding:12px 21px}
-    .hero{padding:76px 0 66px;position:relative}
-    .eyebrow{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted);letter-spacing:.02em}
-    .eyebrow span{padding:6px 10px;border:1px solid var(--line);border-radius:6px;color:var(--green);font-size:12px;letter-spacing:.08em}
-    h1{font-size:clamp(3.5rem,8.5vw,7.5rem);line-height:1.02;font-weight:750;letter-spacing:-.065em;margin:34px 0 28px}
-    h1 span{display:block}
-    .pastel{width:fit-content;background:linear-gradient(100deg,var(--mauve),var(--pink),var(--blue),var(--mauve));background-size:220% 100%;background-clip:text;-webkit-background-clip:text;color:transparent;animation:colorflow 5s ease both}
-    .intro{font-size:18px;color:var(--muted);line-height:1.6;margin:0 0 30px}
-    .actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
-    .button{display:inline-flex;align-items:center;justify-content:center;gap:24px;min-height:54px;padding:16px 23px;border-radius:12px;font-size:15px;font-weight:650;transition:transform .2s,background .2s}
-    .button:hover{transform:translateY(-3px)}
-    .primary{background:var(--mauve);color:var(--mantle)}.primary:hover{background:var(--pink)}
-    .secondary{border:1px solid var(--line)}.secondary:hover{background:#313244}
-    .hero-bottom{margin-top:70px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
-    .words{display:flex;gap:24px}.words span:nth-child(1){color:var(--pink)}.words span:nth-child(2){color:var(--blue)}.words span:nth-child(3){color:var(--green)}
-    .scroll-link{padding:12px 0}
-    .features{border-top:1px solid var(--line);padding:52px 0 68px}
-    .section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:20px;margin-bottom:35px}
-    .section-heading h2{font-size:14px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;margin:0;color:var(--muted)}
-    .section-heading span{font-size:13px;color:var(--muted)}
-    .feature-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;column-gap:64px}
-    .feature{display:flex;align-items:center;gap:23px;padding:26px 0;border-bottom:1px solid var(--line);transition:padding .25s,border-color .25s}
-    .feature:hover{padding-left:10px;border-color:var(--tone)}
-    .feature:nth-child(4n+1){--tone:var(--mauve)}.feature:nth-child(4n+2){--tone:var(--blue)}.feature:nth-child(4n+3){--tone:var(--green)}.feature:nth-child(4n){--tone:var(--peach)}
-    .number{font-size:13px;font-family:ui-monospace,monospace;color:var(--muted)}
-    .feature h3{font-size:clamp(1.1rem,2.1vw,1.6rem);font-weight:500;letter-spacing:-.025em;line-height:1.3;margin:0;color:var(--tone)}
-    .download{background:var(--mauve);color:var(--mantle);border-radius:22px;padding:44px 48px;display:flex;align-items:center;justify-content:space-between;gap:35px;margin-bottom:42px}
-    .download h2{font-size:clamp(2rem,4.5vw,3.5rem);font-weight:650;letter-spacing:-.05em;margin:0 0 12px;line-height:1.1}
-    .download p{font-size:14px;margin:0;line-height:1.5}.download .button{background:var(--mantle);color:var(--text);flex-shrink:0}.download .button:hover{background:#313244}
-    .changes{margin-bottom:54px;border-block:1px solid var(--line);padding:20px 0}
-    summary{font-size:14px;cursor:pointer;width:fit-content;padding:8px 0;color:var(--muted)}
-    .change-list{list-style:none;padding:0;margin:15px 0 5px}.change-list li{padding:14px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.6}.change-list a:hover{text-decoration:underline}.change-list time{display:block;color:var(--muted);font-size:12px}
-    footer{padding:0 0 32px;display:flex;justify-content:space-between;align-items:center;gap:25px;color:var(--muted);font-size:13px}.footer-links{display:flex;gap:24px}footer a:hover{color:var(--pink)}
-    .enter{animation:enter .8s both}.delay-1{animation-delay:.1s}.delay-2{animation-delay:.2s}.delay-3{animation-delay:.3s}
-    @keyframes enter{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-    @keyframes colorflow{from{background-position:100% 50%}to{background-position:0 50%}}
-    @media(max-width:700px){.wrap{width:calc(100% - 40px)}nav{min-height:78px}.navlinks{gap:18px}.navlinks .features-link{display:none}.navlinks .github{padding:10px 16px}.hero{padding:52px 0 34px}h1{font-size:clamp(3rem,11.5vw,5rem);margin-top:30px}.intro{font-size:16px;max-width:310px}.hero-bottom{margin-top:48px}.words{gap:14px;font-size:12px}.scroll-link{font-size:12px}.features{padding:35px 0 42px}.section-heading{margin-bottom:16px}.feature-list{grid-template-columns:1fr}.feature{padding:22px 0}.feature h3{font-size:1.25rem}.download{padding:30px 24px;align-items:flex-start;flex-direction:column;gap:26px}.download .button{width:100%}.changes{margin-bottom:32px}footer{flex-wrap:wrap}.footer-links{gap:18px}}
-    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
-  </style>
+  <meta property="og:title" content="Routix — Le terrain, sans détour.">
+  <meta property="og:description" content="Enregistre. Repère. Repars. Tes tournées restent entre tes mains.">
+  <meta property="og:image" content="https://1337detailing.github.io/Routix/assets/og-cover.svg">
+  <meta property="og:url" content="https://1337detailing.github.io/Routix/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://1337detailing.github.io/Routix/">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+  <title>Routix — Le terrain, sans détour.</title>
 </head>
 <body>
-  <a class="skip" href="#main">Aller au contenu</a>
-  <header><nav class="wrap" aria-label="Navigation principale">
-    <a class="brand" href="#" aria-label="Routix, accueil">routix<span>.</span></a>
-    <div class="navlinks"><a class="features-link" href="#features">Fonctionnalités</a><a class="github" href="https://github.com/1337Detailing/RoutePilot">GitHub ↗</a></div>
-  </nav></header>
-  <main id="main" class="wrap">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="eyebrow enter"><span>ANDROID</span> Tournées de collecte</div>
-      <h1 id="hero-title" class="enter delay-1"><span>Tes tournées.</span><span class="pastel">Ton chemin.</span></h1>
-      <p class="intro enter delay-2">Enregistre tes parcours. Retrouve chaque rue.</p>
-      <div class="actions enter delay-3"><a class="button primary download-link" href="https://github.com/1337Detailing/RoutePilot/actions/workflows/build-debug-apk.yml"><span>Obtenir Routix</span><span aria-hidden="true">↗</span></a><a class="button secondary" href="#features">Les fonctionnalités <span aria-hidden="true">↓</span></a></div>
-      <div class="hero-bottom"><div class="words"><span>Enregistre.</span><span>Retrouve.</span><span>Repars.</span></div><a class="scroll-link" href="#features">La suite ↓</a></div>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+  <div class="scroll-progress" aria-hidden="true"><span></span></div>
+  <div class="site-noise" aria-hidden="true"></div>
+
+  <header class="site-header" id="haut">
+    <nav class="container nav-inner" aria-label="Navigation principale">
+      <a class="wordmark" href="#haut" aria-label="Routix, retour en haut">
+        <svg class="wordmark-icon" viewBox="0 0 42 42" aria-hidden="true"><path d="M9 32V11h7v5c3-5 7-6 13-5v7c-7-1-13 3-13 11v3H9Z" fill="currentColor"/><rect x="31" y="25" width="7" height="7" rx="1" fill="var(--sand)"/></svg>
+        <span>routix<span class="wordmark-dot">.</span></span>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="#fonctionnement">Le principe</a>
+        <a href="#fonctionnalites">Fonctions</a>
+        <a href="#terrain">Sur le terrain</a>
+        <a class="nav-small-cta" href="#telecharger">Obtenir Routix <span aria-hidden="true">↗</span></a>
+      </div>
+      <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span></button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero container" aria-labelledby="hero-title">
+      <div class="hero-text">
+        <p class="eyebrow hero-eyebrow" data-reveal><span class="eyebrow-square" aria-hidden="true"></span> APPLICATION ANDROID <span class="eyebrow-sep">/</span> POUR LE TERRAIN</p>
+        <h1 id="hero-title" class="hero-title" data-reveal>
+          <span class="hero-title-line">LE TERRAIN,</span>
+          <span class="hero-title-line sand-text">SANS DÉTOUR<span class="hero-title-period">.</span></span>
+        </h1>
+        <p class="hero-lede" data-reveal>Enregistre tes tournées. Retrouve chaque repère. Repars sur ta propre trace.</p>
+        <div class="hero-actions" data-reveal>
+          <a class="btn btn-sand download-link" href="https://github.com/1337Detailing/Routix/actions/workflows/build-debug-apk.yml" target="_blank" rel="noopener noreferrer"><span>OBTENIR ROUTIX</span><span class="btn-arrow" aria-hidden="true">↗</span></a>
+          <a class="btn btn-outline" href="#fonctionnement"><span>DÉCOUVRIR</span><span class="btn-arrow" aria-hidden="true">↓</span></a>
+        </div>
+        <div class="hero-meta" data-reveal>
+          <span><span class="meta-cross">✳</span> CONÇU POUR LES VRAIES TOURNÉES</span>
+          <span class="hero-meta-desktop">GPS / REPÈRES / GUIDAGE</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-label="Visualisation artistique d’un téléphone Routix avec un tracé GPS" role="img">
+        <div class="visual-halo" aria-hidden="true"></div>
+        <div class="visual-rulers" aria-hidden="true"><span>R / 001</span><span>FIG. 01 — FIELD DEVICE</span></div>
+        <canvas id="three-canvas" aria-hidden="true"></canvas>
+        <div class="fallback-phone" aria-hidden="true">
+          <div class="fallback-camera"></div>
+          <div class="fallback-screen">
+            <div class="fallback-top"><span>ROUTIX / GPS</span><span>● EN COURS</span></div>
+            <svg viewBox="0 0 280 420" preserveAspectRatio="xMidYMid slice">
+              <g stroke="#464741" stroke-width="2.6" fill="none" opacity=".82"><path d="M-20 55 318 110M-20 195 310 145M-50 305 330 360M20 -20 55 460M150 -20 122 460M255 -20 210 460"/><path d="M-30 93 325 38M-25 390 290 252M-30 220 300 310" stroke-width="1.4"/></g>
+              <path d="M43 335 85 300 85 204 166 204 166 122 229 89" stroke="#282b26" stroke-width="23" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+              <path d="M43 335 85 300 85 204 166 204 166 122 229 89" stroke="#d8c48a" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+              <circle cx="43" cy="335" r="11" stroke="#d8c48a" stroke-width="3" fill="#141611"/><circle cx="229" cy="89" r="10" fill="#d8c48a"/>
+              <g font-family="monospace" font-size="10" fill="#90908b"><text x="29" y="175" transform="rotate(-13 29 175)">RUE DU MOULIN</text><text x="170" y="281" transform="rotate(16 170 281)">RUE CENTRALE</text></g>
+            </svg>
+            <div class="fallback-bottom"><span>TRACÉ ACTIF</span><strong>GUIDAGE</strong></div>
+          </div>
+        </div>
+        <div class="hud hud-top" aria-hidden="true"><span class="hud-point"></span><span>TRACE ORIGINALE<br><strong>EN VUE</strong></span></div>
+        <div class="hud hud-bottom" aria-hidden="true"><span class="hud-mini">02 / REPÈRES</span><span class="hud-line"></span><span>RESTER SUR LE PARCOURS</span></div>
+        <div class="visual-corner visual-corner-tl" aria-hidden="true"></div><div class="visual-corner visual-corner-br" aria-hidden="true"></div>
+      </div>
+      <a class="scroll-cue" href="#fonctionnement" aria-label="Défiler vers le fonctionnement"><span>SCROLLER POUR EXPLORER</span><span class="scroll-cue-line" aria-hidden="true"></span><span aria-hidden="true">↓</span></a>
+      <span class="hero-index" aria-hidden="true">01 / 05</span>
     </section>
-    <section class="features" id="features" aria-labelledby="features-title">
-      <div class="section-heading"><h2 id="features-title">Sur le terrain</h2><span>Les essentiels</span></div>
-      <ol class="feature-list">
-        <li class="feature"><span class="number" aria-hidden="true">01</span><h3>Enregistrement GPS</h3></li>
-        <li class="feature"><span class="number" aria-hidden="true">02</span><h3>Guidage sur le tracé</h3></li>
-        <li class="feature"><span class="number" aria-hidden="true">03</span><h3>Cartes hors ligne</h3></li>
-        <li class="feature"><span class="number" aria-hidden="true">04</span><h3>Reprise de tournée</h3></li>
-        <li class="feature"><span class="number" aria-hidden="true">05</span><h3>Import &amp; partage GPX</h3></li>
-        <li class="feature"><span class="number" aria-hidden="true">06</span><h3>Plans imprimables</h3></li>
-        <li class="feature"><span class="number" aria-hidden="true">07</span><h3>Suivi des heures</h3></li>
-      </ol>
+
+    <div class="marquee-rule" aria-hidden="true"><div class="marquee-track"><span>ENREGISTRER</span><b>✳</b><span>REPÉRER</span><b>✳</b><span>GUIDER</span><b>✳</b><span>REPARTIR</span><b>✳</b><span>ENREGISTRER</span><b>✳</b><span>REPÉRER</span><b>✳</b><span>GUIDER</span><b>✳</b><span>REPARTIR</span><b>✳</b></div></div>
+
+    <section class="section-block section-method" id="fonctionnement" aria-labelledby="method-title">
+      <div class="container">
+        <div class="section-topline"><span class="section-index">/ 01 — LE PRINCIPE</span><span class="section-side">UNE MÉTHODE SIMPLE</span></div>
+        <div class="section-intro method-intro"><h2 id="method-title" class="display-title" data-reveal>TA TOURNÉE.<br><span class="sand-text">TON TRACÉ.</span></h2><p class="section-intro-text" data-reveal>Pas besoin de tout mémoriser. Routix garde le chemin que tu as réellement parcouru.</p></div>
+        <div class="steps-grid">
+          <article class="step" data-reveal>
+            <div class="step-top"><span class="step-index">01 /</span><svg class="step-symbol" viewBox="0 0 100 100" role="img" aria-label="Enregistrement GPS"><rect x="18" y="15" width="64" height="70" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M50 27v46M27 50h46" stroke="currentColor" stroke-width="1" stroke-dasharray="3 5"/><circle cx="50" cy="51" r="14" fill="none" stroke="var(--sand)" stroke-width="2"/><circle cx="50" cy="51" r="4" fill="var(--sand)"/></svg></div>
+            <h3>Enregistre.</h3><p>Le GPS trace ton parcours au rythme de ta tournée.</p><span class="step-label">CAPTURE TERRAIN</span>
+          </article>
+          <article class="step" data-reveal>
+            <div class="step-top"><span class="step-index">02 /</span><svg class="step-symbol" viewBox="0 0 100 100" role="img" aria-label="Repères de tournée"><path d="M22 73 43 55 57 64 79 32" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="22" cy="73" r="5" fill="var(--sand)"/><circle cx="43" cy="55" r="5" fill="var(--sand)"/><circle cx="57" cy="64" r="5" fill="var(--sand)"/><circle cx="79" cy="32" r="8" fill="none" stroke="var(--sand)" stroke-width="2"/><path d="M79 10v12M79 42v12M57 32h12M89 32h9" stroke="currentColor"/></svg></div>
+            <h3>Place tes repères.</h3><p>Marche arrière, deux côtés, notes. Ce qui compte, au bon endroit.</p><span class="step-label">REPÈRES MÉTIER</span>
+          </article>
+          <article class="step" data-reveal>
+            <div class="step-top"><span class="step-index">03 /</span><svg class="step-symbol" viewBox="0 0 100 100" role="img" aria-label="Guidage sur tracé"><path d="M15 77 37 61 37 37 72 37" fill="none" stroke="var(--sand)" stroke-width="3" stroke-linejoin="round"/><path d="m64 29 9 8-9 8" fill="none" stroke="var(--sand)" stroke-width="3"/><path d="M17 21h25M17 29h16M57 66h24M65 74h16" stroke="currentColor" stroke-width="1.5" opacity=".8"/></svg></div>
+            <h3>Repars.</h3><p>Retrouve ta trace et suis-la avec les repères enregistrés.</p><span class="step-label">GUIDAGE SUR TRACE</span>
+          </article>
+        </div>
+      </div>
     </section>
-    <section class="download" id="download" aria-labelledby="download-title"><div><h2 id="download-title">À toi de rouler.</h2><p id="release-note">Android · Version de test sur GitHub Actions</p></div><a class="button download-link" href="https://github.com/1337Detailing/RoutePilot/actions/workflows/build-debug-apk.yml"><span>Obtenir Routix</span><span aria-hidden="true">↗</span></a></section>
-    <details class="changes"><summary>Dernières mises à jour</summary><ul class="change-list" id="changes"><li><a href="https://github.com/1337Detailing/RoutePilot/commits/master/RoutixStandalone">Voir l’historique sur GitHub ↗</a></li></ul></details>
+
+    <section class="section-block feature-section" id="fonctionnalites" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-topline"><span class="section-index">/ 02 — LES ESSENTIELS</span><span class="section-side">PENSÉ POUR LES TOURNÉES</span></div>
+        <div class="feature-head"><h2 class="display-title" id="features-title" data-reveal>RIEN DE TROP.<br><span class="sand-text">JUSTE L'UTILE.</span></h2><p class="section-intro-text" data-reveal>Les bonnes informations, là où tu en as besoin.</p></div>
+        <div class="feature-table">
+          <article class="feature-row" data-reveal><span class="feature-no">01</span><div class="feature-name"><h3>Guidage sur trace GPS</h3><p>Reprends une tournée déjà enregistrée.</p></div><div class="feature-art feature-art-route" aria-hidden="true"><svg viewBox="0 0 160 80"><path d="M8 63H54V42H91V17H151" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 5"/><path d="M8 63H54V42H91V17H151" fill="none" stroke="var(--sand)" stroke-width="3"/><circle cx="8" cy="63" r="5" fill="var(--sand)"/><circle cx="151" cy="17" r="5" fill="#0a0a0a" stroke="var(--sand)" stroke-width="2"/></svg></div><span class="feature-arrow" aria-hidden="true">↗</span></article>
+          <article class="feature-row" data-reveal><span class="feature-no">02</span><div class="feature-name"><h3>Cartes hors ligne</h3><p>Des cartes françaises téléchargeables pour travailler sans réseau.</p></div><div class="feature-art" aria-hidden="true"><svg viewBox="0 0 160 80"><path d="M12 18 56 7 104 19 147 7V64l-43 10-48-13-44 13Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M56 7v54M104 19v55" stroke="currentColor" stroke-width="1.4"/><path d="M25 58 52 37 73 44 96 31 132 22" stroke="var(--sand)" stroke-width="2.7" fill="none"/></svg></div><span class="feature-arrow" aria-hidden="true">↗</span></article>
+          <article class="feature-row" data-reveal><span class="feature-no">03</span><div class="feature-name"><h3>Repères métier</h3><p>Marche arrière, deux côtés et notes géolocalisées.</p></div><div class="feature-art" aria-hidden="true"><svg viewBox="0 0 160 80"><path d="M24 44h112" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 5"/><path d="m45 26-16 18 16 18M115 26l16 18-16 18" stroke="var(--sand)" stroke-width="2" fill="none"/><rect x="68" y="30" width="25" height="28" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="80" cy="44" r="3" fill="var(--sand)"/></svg></div><span class="feature-arrow" aria-hidden="true">↗</span></article>
+          <article class="feature-row" data-reveal><span class="feature-no">04</span><div class="feature-name"><h3>Plan imprimable & GPX</h3><p>Partage la tournée et prépare un atlas de rues sur papier.</p></div><div class="feature-art" aria-hidden="true"><svg viewBox="0 0 160 80"><path d="M33 11h57l23 23v36H33Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M90 11v23h23M45 48h56M45 58h38" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M51 29 63 22 75 35 85 27" fill="none" stroke="var(--sand)" stroke-width="2.8"/></svg></div><span class="feature-arrow" aria-hidden="true">↗</span></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="field-section" id="terrain" aria-labelledby="field-title">
+      <div class="container field-grid">
+        <div class="field-art" data-reveal>
+          <div class="field-art-top"><span>ROUTIX / EXPORT TERRAIN</span><span>FORMAT A4</span></div>
+          <div class="paper-board" aria-hidden="true">
+            <div class="paper-header"><strong>TOURNÉE / 01</strong><span>ATLAS DE RUE</span></div>
+            <svg viewBox="0 0 460 390" role="presentation"><rect x="0" y="0" width="460" height="390" fill="#e7e1d0"/><g stroke="#b9b2a3" stroke-width="7" fill="none" opacity=".8"><path d="M-20 55 480 120M-20 185 480 136M-20 308 480 335M65 -20 82 420M181 -20 146 420M352 -20 287 420"/><path stroke-width="3" d="M0 99 460 42M0 358 460 240M0 227 460 280"/></g><path d="M57 340 110 305 110 210 228 210 228 130 344 87" fill="none" stroke="#36352f" stroke-linecap="round" stroke-linejoin="round" stroke-width="11"/><path d="M57 340 110 305 110 210 228 210 228 130 344 87" fill="none" stroke="#b49a53" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/><g font-family="monospace" font-size="12" font-weight="bold"><circle cx="57" cy="340" r="14" fill="#25251f"/><text x="52" y="345" fill="#eee9db">D</text><circle cx="344" cy="87" r="14" fill="#25251f"/><text x="340" y="92" fill="#eee9db">A</text></g><g fill="#4a4940" font-family="monospace" font-size="11"><text x="32" y="167" transform="rotate(-7 32 167)">RUE DU MOULIN</text><text x="257" y="277" transform="rotate(7 257 277)">RUE CENTRALE</text><text x="265" y="66">01</text><text x="168" y="199">02</text></g><path d="M228 180v22m-8-11 8 11 8-11" fill="none" stroke="#302e27" stroke-width="3"/></svg>
+            <div class="paper-footer"><span>TRACE ORIGINALE</span><span>01 / 01</span></div>
+          </div>
+          <span class="field-side-label" aria-hidden="true">PLANS / POUR LE TERRAIN</span>
+        </div>
+        <div class="field-copy">
+          <div class="section-topline"><span class="section-index">/ 03 — SUR LE TERRAIN</span><span class="section-side">PAPIER + GPS</span></div>
+          <h2 id="field-title" class="display-title" data-reveal>LE PARCOURS.<br><span class="sand-text">EN MAIN.</span></h2>
+          <p data-reveal>Un trajet ne sert à rien s'il reste enfermé dans un écran. Prépare un plan A4, partage ton GPX et garde tes repères à portée de main.</p>
+          <div class="field-tags" data-reveal><span>IMPRESSION A4</span><span>GPX</span><span>REPÈRES</span></div>
+          <a href="https://github.com/1337Detailing/Routix" class="text-link" target="_blank" rel="noopener noreferrer" data-reveal>EXPLORER LE PROJET <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="facts-section section-block" aria-labelledby="facts-title">
+      <div class="container">
+        <div class="section-topline"><span class="section-index">/ 04 — COMPATIBILITÉ</span><span class="section-side">CE QU'IL FAUT SAVOIR</span></div>
+        <h2 class="display-title facts-title" id="facts-title" data-reveal>FAIT POUR <span class="sand-text">AVANCER.</span></h2>
+        <div class="facts-grid">
+          <div class="fact" data-reveal><span class="fact-top">PLATEFORME</span><strong>ANDROID</strong><span class="fact-bottom">Application native</span></div>
+          <div class="fact" data-reveal><span class="fact-top">CARTOGRAPHIE</span><strong>OSM</strong><span class="fact-bottom">Cartes téléchargeables</span></div>
+          <div class="fact" data-reveal><span class="fact-top">ÉCHANGE</span><strong>GPX</strong><span class="fact-bottom">Import et partage</span></div>
+        </div>
+        <p class="facts-note">La navigation repose sur ta trace GPS enregistrée. La disponibilité de certaines cartes et fonctions dépend des données téléchargées et des autorisations Android.</p>
+      </div>
+    </section>
+
+    <section class="end-section" id="telecharger" aria-labelledby="download-title">
+      <div class="container end-inner">
+        <div class="end-mark" aria-hidden="true">R<span>.</span></div>
+        <p class="end-eyebrow">/ 05 — PRENDRE LA ROUTE</p>
+        <h2 id="download-title" data-reveal>PRÊT POUR<br><span>LA PROCHAINE</span><br>TOURNÉE<span class="sand-text"> ?</span></h2>
+        <p class="end-desc">Routix est disponible en version de test sur GitHub.</p>
+        <div class="end-actions">
+          <a class="btn btn-dark download-link" href="https://github.com/1337Detailing/Routix/actions/workflows/build-debug-apk.yml" target="_blank" rel="noopener noreferrer"><span>OBTENIR ROUTIX</span><span class="btn-arrow" aria-hidden="true">↗</span></a>
+          <a class="end-github" href="https://github.com/1337Detailing/Routix" target="_blank" rel="noopener noreferrer">VOIR LE CODE SOURCE ↗</a>
+        </div>
+        <span class="end-footnote">APK DE TEST · ANDROID · SOURCE SUR GITHUB</span>
+      </div>
+    </section>
   </main>
-  <footer class="wrap"><span>Routix · <span id="year">2026</span></span><div class="footer-links"><a href="https://github.com/1337Detailing/RoutePilot">Code source ↗</a><a href="https://github.com/1337Detailing/RoutePilot/issues">Signaler un bug ↗</a></div></footer>
-  <script>
-    const api = 'https://api.github.com/repos/1337Detailing/RoutePilot';
-    document.getElementById('year').textContent = new Date().getFullYear();
-    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-    if ('IntersectionObserver' in window) {
-      const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        if (!reducedMotion.matches && entry.target.animate) entry.target.animate([{opacity:.25,transform:'translateY(18px)'},{opacity:1,transform:'translateY(0)'}],{duration:650,easing:'cubic-bezier(.2,.7,.2,1)'});
-        observer.unobserve(entry.target);
-      }), {threshold:.15});
-      document.querySelectorAll('.feature,.download').forEach(el => observer.observe(el));
-    }
-    async function getJSON(path) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 7000);
-      try {const response = await fetch(api + path, {signal:controller.signal}); if (!response.ok) throw new Error('GitHub unavailable'); return await response.json();}
-      finally {clearTimeout(timer);}
-    }
-    const safeGithubURL = value => {try {const u = new URL(value);return u.protocol === 'https:' && u.hostname === 'github.com' && u.pathname.startsWith('/1337Detailing/RoutePilot/') ? u.href : null;}catch{return null;}};
-    async function loadRelease() {
-      try {
-        const release = await getJSON('/releases/latest');
-        const apk = (release.assets || []).find(asset => /\.apk$/i.test(asset.name));
-        const url = safeGithubURL(apk ? apk.browser_download_url : release.html_url);
-        if (!url) return;
-        document.querySelectorAll('.download-link').forEach(link => {link.href = url;link.firstElementChild.textContent = apk ? 'Télécharger l’APK' : 'Voir la version';});
-        document.getElementById('release-note').textContent = 'Android · ' + (release.tag_name || 'Dernière version');
-      } catch { /* Keep the working GitHub Actions links when releases are unavailable. */ }
-    }
-    let changesLoaded = false;
-    document.querySelector('.changes').addEventListener('toggle', async event => {
-      if (!event.target.open || changesLoaded) return;
-      changesLoaded = true;
-      try {
-        const commits = await getJSON('/commits?sha=master&path=RoutixStandalone&per_page=3');
-        const items = [];
-        for (const commit of commits) {
-          const url = safeGithubURL(commit.html_url);if (!url) continue;
-          const li = document.createElement('li');const a = document.createElement('a');
-          a.href = url;a.textContent = commit.commit.message.split('\n')[0];li.append(a);
-          const date = new Date(commit.commit.author.date);
-          if (!Number.isNaN(date.getTime())) {const time = document.createElement('time');time.dateTime = date.toISOString();time.textContent = date.toLocaleDateString('fr-FR');li.append(time);}
-          items.push(li);
-        }
-        if (items.length) document.getElementById('changes').replaceChildren(...items);
-      } catch {changesLoaded = false;}
-    });
-    loadRelease();
-  </script>
+
+  <footer class="site-footer"><div class="container footer-inner"><a href="#haut" class="footer-brand">routix<span>.</span></a><span class="footer-credit">FAIT POUR LE TERRAIN / © <span id="year">2026</span></span><div class="footer-links"><a href="https://github.com/1337Detailing/Routix" target="_blank" rel="noopener noreferrer">GITHUB ↗</a><a href="https://github.com/1337Detailing/Routix/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">LICENCE ↗</a><a href="https://github.com/1337Detailing/Routix/issues" target="_blank" rel="noopener noreferrer">CONTACT ↗</a></div></div></footer>
 </body>
 </html>
