@@ -16,19 +16,19 @@ import java.util.*;
 
 /** Isolated rehearsal/comparison map: cannot move real navigation progress. */
 final class RouteStudyMap {
-    private final CatppuccinTheme.Tokens theme;
+    private final RoutixTheme.Tokens theme;
     private final RoutixActivity host;private final RouteStore store;private final RouteStore.Summary before,route;
     private final RouteComparison.Result comparison;private final List<PaperRoute.Step> oldStreets,streets;
     private final Handler handler=new Handler(Looper.getMainLooper());private final List<GeoPoint> points=new ArrayList<>();
     private final List<Polyline> oldLines=new ArrayList<>(),newLines=new ArrayList<>();
     private Dialog dialog;private MapView map;private Marker cursor;private TextView status;private Button play;
     private SeekBar seek;private double[] cumulative,eventDistance;private double position;private int speed=4;private boolean playing,dragging;private long lastTick;
-    RouteStudyMap(RoutixActivity h,RouteStore s,RouteStore.Summary a,RouteStore.Summary b,RouteComparison.Result c,List<PaperRoute.Step> oldStreets,List<PaperRoute.Step> streets){host=h;theme=CatppuccinTheme.from(h);store=s;before=a;route=b==null?a:b;comparison=c;this.oldStreets=oldStreets;this.streets=streets;}
+    RouteStudyMap(RoutixActivity h,RouteStore s,RouteStore.Summary a,RouteStore.Summary b,RouteComparison.Result c,List<PaperRoute.Step> oldStreets,List<PaperRoute.Step> streets){host=h;theme=RoutixTheme.from(h);store=s;before=a;route=b==null?a:b;comparison=c;this.oldStreets=oldStreets;this.streets=streets;}
     private int dp(int n){return (int)(n*host.getResources().getDisplayMetrics().density+.5f);}
     private TextView label(String s,int size){TextView t=new TextView(host);t.setText(s);t.setTextSize(size);t.setTextColor(theme.text);t.setPadding(dp(12),dp(5),dp(12),dp(5));return t;}
     private Button button(String s,Runnable action){Button b=new Button(host);b.setText(s);b.setAllCaps(false);b.setTextSize(12);b.setTextColor(theme.onAccent());b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(theme.accent));b.setMinHeight(dp(52));b.setOnClickListener(v->action.run());return b;}
     void show(){
-        dialog=new Dialog(host,CatppuccinTheme.activityStyle(host.getSharedPreferences("routix",0)));LinearLayout panel=new LinearLayout(host);panel.setOrientation(LinearLayout.VERTICAL);panel.setBackgroundColor(theme.base);
+        dialog=new Dialog(host,RoutixTheme.activityStyle(host.getSharedPreferences("routix",0)));LinearLayout panel=new LinearLayout(host);panel.setOrientation(LinearLayout.VERTICAL);panel.setBackgroundColor(theme.base);
         LinearLayout heading=new LinearLayout(host);heading.setGravity(Gravity.CENTER_VERTICAL);heading.addView(label(comparison==null?"Reconnaissance":"Comparaison",21),new LinearLayout.LayoutParams(0,-2,1));heading.addView(button("Fermer",this::close));panel.addView(heading);
         panel.addView(label(comparison==null?store.displayName(route.file):store.displayName(before.file)+" → "+store.displayName(route.file),14));
         map=new MapView(host);map.setMultiTouchControls(true);map.setTilesScaledToDpi(true);map.getController().setZoom(17.0);panel.addView(map,new LinearLayout.LayoutParams(-1,0,1));

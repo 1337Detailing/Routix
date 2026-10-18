@@ -12,14 +12,14 @@ import android.view.View;
 
 /** A header-owned speed display, never a floating window over map controls. */
 final class CompactSpeedometer extends View {
-    private final CatppuccinTheme.Tokens theme;
+    private final RoutixTheme.Tokens theme;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private float speed;
     private long fixNanos;
     private boolean valid;
     private Location previousFix;
     private final Runnable expire=()->{valid=false;setContentDescription("Vitesse indisponible, GPS en attente");invalidate();};
-    CompactSpeedometer(Context context){super(context);theme=CatppuccinTheme.from(context);setContentDescription("Vitesse indisponible, GPS en attente");}
+    CompactSpeedometer(Context context){super(context);theme=RoutixTheme.from(context);setContentDescription("Vitesse indisponible, GPS en attente");}
     void update(Location location){
         removeCallbacks(expire);
         if(location==null){expire.run();return;}

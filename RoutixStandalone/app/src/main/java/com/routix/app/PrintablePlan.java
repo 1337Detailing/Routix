@@ -199,7 +199,7 @@ final class PrintablePlan {
     }
     private void preview(int index){
         if(!active())return;
-        CatppuccinTheme.Tokens theme=CatppuccinTheme.from(activity);LinearLayout layout=new LinearLayout(activity);layout.setOrientation(LinearLayout.VERTICAL);layout.setBackgroundColor(theme.base);
+        RoutixTheme.Tokens theme=RoutixTheme.from(activity);LinearLayout layout=new LinearLayout(activity);layout.setOrientation(LinearLayout.VERTICAL);layout.setBackgroundColor(theme.base);
         TextView heading=new TextView(activity);heading.setTextColor(theme.text);heading.setTextSize(14);heading.setPadding(16,12,16,12);heading.setText("Page "+(index+1)+" / "+images.size()+" • PNG haute résolution + PDF A4");layout.addView(heading);
         ImageView view=new ImageView(activity);BitmapFactory.Options options=new BitmapFactory.Options();options.inSampleSize=2;Bitmap bitmap=BitmapFactory.decodeFile(images.get(index).getAbsolutePath(),options);view.setImageBitmap(bitmap);view.setAdjustViewBounds(true);
         ScrollView scroll=new ScrollView(activity);scroll.addView(view);layout.addView(scroll,new LinearLayout.LayoutParams(-1,(int)(activity.getResources().getDisplayMetrics().heightPixels*.55)));

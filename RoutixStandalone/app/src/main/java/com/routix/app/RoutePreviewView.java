@@ -11,11 +11,11 @@ import java.util.List;
 
 /** Tiny, non-interactive route thumbnail for the route library. */
 final class RoutePreviewView extends View {
-    private final CatppuccinTheme.Tokens theme;
+    private final RoutixTheme.Tokens theme;
     private final Paint line=new Paint(Paint.ANTI_ALIAS_FLAG),dot=new Paint(Paint.ANTI_ALIAS_FLAG);
     private List<RouteStore.Point> points=Collections.emptyList();
 
-    RoutePreviewView(Context context){super(context);theme=CatppuccinTheme.from(context);setWillNotDraw(false);}
+    RoutePreviewView(Context context){super(context);theme=RoutixTheme.from(context);setWillNotDraw(false);}
     void setPoints(List<RouteStore.Point> value){points=value==null?Collections.emptyList():value;invalidate();}
 
     @Override protected void onDraw(Canvas canvas){
