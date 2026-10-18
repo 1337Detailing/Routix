@@ -448,7 +448,46 @@ public class RoutixActivity extends AppCompatActivity {
     }
     private String maneuverGlyph(GuidanceEngine.Maneuver m){if(m==null)return "↑";if(m.direction<0)return "↰";if(m.direction==1)return "↱";if(m.direction==2)return "↶";return "↑";}
 
-    private void drawRecordingTrace(){if(recordingLine==null)return;if(!recording||tracker==null||tracker.points.size()<2){recordingLine.setPoints(Collections.emptyList());if(modern!=null)modern.setRecordingRoute(Collections.emptyList());map.invalidate();return;}List<GeoPoint> pts=new ArrayList<>();int stride=Math.max(1,(int)Math.ceil(tracker.points.size()/(double)MAX_DISPLAY_ROUTE_POINTS));for(int i=0;i<tracker.points.size();i+=stride){RouteStore.Point p=tracker.points.get(i);pts.add(new GeoPoint(p.lat,p.lon));}RouteStore.Point last=tracker.points.get(tracker.points.size()-1);if(pts.isEmpty()||pts.get(pts.size()-1).getLatitude()!=last.lat||pts.get(pts.size()-1).getLongitude()!=last.lon)pts.add(new GeoPoint(last.lat,last.lon));recordingLine.setPoints(offline?pts:Collections.emptyList());recordingLine.getOutlinePaint().setColor(routeColor());recordingLine.getOutlinePaint().setAlpha(128);recordingLine.getOutlinePaint().setStrokeWidth(dp(Math.max(5,prefs.getInt("route_width",10)-2)));if(modern!=null)modern.setRecordingRoute(pts);map.invalidate();}
+    private final List<Polyline> extraRecordingLines=new ArrayList<>();
+    private void drawRecordingTrace(){
+        if(recordingLine==null)return;
+        if(!recording||tracker==null||tracker.points.size()<2){
+            recordingLine.setPoints(Collections.emptyList());
+            for(Polyline line:extraRecordingLines)map.getOverlays().remove(line);
+            extraRecordingLines.clear();
+            if(modern!=null)modern.setRecordingSegments(Collections.emptyList());
+            map.invalidate();return;
+        }
+        List<List<GeoPoint>> segments=new ArrayList<>();
+        List<GeoPoint> active=new ArrayList<>();
+        segments.add(active);
+        List<RouteStore.Point> source=tracker.points;
+        int stride=Math.max(1,(int)Math.ceil(source.size()/(double)MAX_DISPLAY_ROUTE_POINTS));
+        for(int i=0;i<source.size();i++){
+            RouteStore.Point p=source.get(i);
+            if(p.breakBefore&&!active.isEmpty()){active=new ArrayList<>();segments.add(active);}
+            if(i%stride==0||p.breakBefore||i==source.size()-1)
+                active.add(new GeoPoint(p.lat,p.lon));
+        }
+        while(extraRecordingLines.size()<segments.size()-1){
+            Polyline line=new Polyline();
+            line.getOutlinePaint().setStrokeCap(Paint.Cap.ROUND);
+            line.getOutlinePaint().setStrokeJoin(Paint.Join.ROUND);
+            extraRecordingLines.add(line);map.getOverlays().add(line);
+        }
+        while(extraRecordingLines.size()>segments.size()-1)
+            map.getOverlays().remove(extraRecordingLines.remove(extraRecordingLines.size()-1));
+        int color=recordingColor(), width=dp(Math.max(5,prefs.getInt("route_width",10)-2));
+        for(int i=0;i<segments.size();i++){
+            Polyline line=i==0?recordingLine:extraRecordingLines.get(i-1);
+            line.setPoints(offline?segments.get(i):Collections.emptyList());
+            line.getOutlinePaint().setColor(color);line.getOutlinePaint().setAlpha(180);
+            line.getOutlinePaint().setStrokeWidth(width);
+        }
+        if(modern!=null)modern.setRecordingSegments(segments);
+        map.invalidate();
+    }
+
     private void drawRemaining(GuidanceEngine.State state){if(!guiding||guidingRoute==null||!"map".equals(selectedTab))return;boolean erase=prefs.getBoolean("erase_passed",true);int start=!erase||state==null?0:Math.max(0,Math.min(guidingRoute.points.size()-2,state.nearestIndex));int from=start+(erase&&state!=null?1:0);List<GeoPoint> pts=new ArrayList<>();if(state!=null&&erase&&Double.isFinite(state.position.lat)&&Double.isFinite(state.position.lon))pts.add(new GeoPoint(state.position.lat,state.position.lon));int available=Math.max(0,guidingRoute.points.size()-from),slots=Math.max(2,MAX_DISPLAY_ROUTE_POINTS-pts.size()),stride=Math.max(1,(int)Math.ceil(available/(double)slots));for(int i=from;i<guidingRoute.points.size();i+=stride){RouteStore.Point p=guidingRoute.points.get(i);pts.add(new GeoPoint(p.lat,p.lon));}if(from<guidingRoute.points.size()){RouteStore.Point last=guidingRoute.points.get(guidingRoute.points.size()-1);if(pts.isEmpty()||pts.get(pts.size()-1).getLatitude()!=last.lat||pts.get(pts.size()-1).getLongitude()!=last.lon)pts.add(new GeoPoint(last.lat,last.lon));}if(modern!=null){modern.setRoute(pts);modern.setEvents(guidingRoute.events);}remainingLine.setPoints(offline?pts:Collections.emptyList());remainingLine.getOutlinePaint().setColor(guidanceColor());remainingLine.getOutlinePaint().setStrokeWidth(dp(prefs.getInt("route_width",10)));String traceStyle=prefs.getString("guidance_trace_style","arrows");remainingLine.getOutlinePaint().setPathEffect("dashed".equals(traceStyle)?new android.graphics.DashPathEffect(new float[]{dp(14),dp(10)},0):null);if(offline&&"arrows".equals(traceStyle))routeArrows.setPoints(pts);else routeArrows.setPoints(new ArrayList<>());List<GeoPoint> ahead=firstMeters(pts,50);aheadLine.setPoints(offline?ahead:Collections.emptyList());aheadLine.getOutlinePaint().setColor(aheadColor());aheadLine.getOutlinePaint().setStrokeWidth(dp(prefs.getInt("route_width",10)+2));aheadLine.getOutlinePaint().setPathEffect(null);if(modern!=null)modern.setAheadRoute(ahead);map.invalidate();}
     private void updateApproach(Location l){if(!approachingStart||approachRoute==null||!approachRoute.usable())return;approachIndex=DepartureNavigation.advanceIndex(approachRoute.points,approachIndex,l);List<GeoPoint> pts=DepartureNavigation.remaining(approachRoute,approachIndex,l);
         if(modern!=null)modern.setApproach(pts);approachLine.setPoints(offline?pts:Collections.emptyList());approachLine.getOutlinePaint().setColor(TEAL);approachLine.getOutlinePaint().setStrokeWidth(dp(8));if(offline)approachArrows.setPoints(pts);else approachArrows.setPoints(Collections.emptyList());map.invalidate();}

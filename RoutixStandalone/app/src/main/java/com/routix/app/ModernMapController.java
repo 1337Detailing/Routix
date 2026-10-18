@@ -22,7 +22,7 @@ import static org.maplibre.android.style.layers.PropertyFactory.*;
 final class ModernMapController {
     private static final int MAX_ROUTE_RENDER_POINTS=6000,MAX_ARROW_RENDER_POINTS=1800;
     private final MapView view;private final SharedPreferences prefs;private MapLibreMap map;private Style style;
-    private List<org.osmdroid.util.GeoPoint> route=Collections.emptyList(),aheadRoute=Collections.emptyList(),approach=Collections.emptyList(),recordingRoute=Collections.emptyList();private Location location,headingFix;
+    private List<org.osmdroid.util.GeoPoint> route=Collections.emptyList(),aheadRoute=Collections.emptyList(),approach=Collections.emptyList(),recordingRoute=Collections.emptyList();private List<List<org.osmdroid.util.GeoPoint>> recordingSegments=Collections.emptyList();private Location location,headingFix;
     private long routeSignature=Long.MIN_VALUE,aheadSignature=Long.MIN_VALUE,approachSignature=Long.MIN_VALUE,recordingSignature=Long.MIN_VALUE,lastCameraMs,lastPositionFrameMs;
     private Location visualLocation;
     private boolean follow=true,heading=true,destroyed,visible=true,bearingReady,guidingMode;
@@ -36,7 +36,21 @@ final class ModernMapController {
     private Bitmap arrow(){Bitmap b=Bitmap.createBitmap(44,34,Bitmap.Config.ARGB_8888);Canvas c=new Canvas(b);Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);p.setColor(RoutixTheme.from(prefs).text);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(7);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);p.setShadowLayer(3,0,1,RoutixTheme.from(prefs).crust);Path path=new Path();path.moveTo(11,6);path.lineTo(29,17);path.lineTo(11,28);c.drawPath(path,p);return b;}
     void setRoute(List<org.osmdroid.util.GeoPoint> points){List<org.osmdroid.util.GeoPoint> next=points==null?Collections.emptyList():points;long signature=signature(next);if(signature==routeSignature)return;routeSignature=signature;route=new ArrayList<>(next);if(visible)renderRoute();}
     void setAheadRoute(List<org.osmdroid.util.GeoPoint> points){List<org.osmdroid.util.GeoPoint> next=points==null?Collections.emptyList():points;long signature=signature(next);if(signature==aheadSignature)return;aheadSignature=signature;aheadRoute=new ArrayList<>(next);if(visible)renderAhead();}
-    void setRecordingRoute(List<org.osmdroid.util.GeoPoint> points){List<org.osmdroid.util.GeoPoint> next=points==null?Collections.emptyList():points;long signature=signature(next);if(signature==recordingSignature)return;recordingSignature=signature;recordingRoute=new ArrayList<>(next);if(visible)renderRecording();}
+    void setRecordingSegments(List<List<org.osmdroid.util.GeoPoint>> segments){
+        List<List<org.osmdroid.util.GeoPoint>> copy=new ArrayList<>();
+        long signature=1;
+        for(List<org.osmdroid.util.GeoPoint> segment:segments){
+            if(segment.isEmpty())continue;
+            List<org.osmdroid.util.GeoPoint> points=new ArrayList<>(segment);
+            copy.add(points);signature=31*signature+signature(points);
+        }
+        if(signature==recordingSignature)return;
+        recordingSignature=signature;
+        recordingSegments=copy;
+        recordingRoute=Collections.emptyList();
+        if(visible)renderRecording();
+    }
+    void setRecordingRoute(List<org.osmdroid.util.GeoPoint> points){recordingSegments=Collections.emptyList();List<org.osmdroid.util.GeoPoint> next=points==null?Collections.emptyList():points;long signature=signature(next);if(signature==recordingSignature)return;recordingSignature=signature;recordingRoute=new ArrayList<>(next);if(visible)renderRecording();}
     void setApproach(List<org.osmdroid.util.GeoPoint> points){List<org.osmdroid.util.GeoPoint> next=points==null?Collections.emptyList():points;long signature=signature(next);if(signature==approachSignature)return;approachSignature=signature;approach=new ArrayList<>(next);if(visible)renderApproach();}
     void setEvents(List<RouteStore.Event> values){List<RouteStore.Event> next=values==null?Collections.emptyList():values;int signature=eventsSignature(next);if(signature==eventsSignature)return;eventsSignature=signature;events=new ArrayList<>(next);if(visible)renderEvents();}
     private static long signature(List<org.osmdroid.util.GeoPoint> points){if(points==null||points.isEmpty())return 0;long h=points.size();int[] index={0,points.size()/2,points.size()-1};for(int i:index){org.osmdroid.util.GeoPoint p=points.get(i);h=31*h+Double.doubleToLongBits(p.getLatitude());h=31*h+Double.doubleToLongBits(p.getLongitude());}return h;}
@@ -46,7 +60,19 @@ final class ModernMapController {
     private void renderEvents(){if(style==null)return;GeoJsonSource source=style.getSourceAs("events");if(source==null)return;List<Feature> features=new ArrayList<>();for(RouteStore.Event e:events){Feature f=Feature.fromGeometry(Point.fromLngLat(e.lon,e.lat));f.addStringProperty("label",e.label);features.add(f);}source.setGeoJson(FeatureCollection.fromFeatures(features));}
     private void renderRoute(){renderLine("route","arrows",route,1100);}
     private void renderAhead(){renderLine("route-ahead",null,aheadRoute,0);}
-    private void renderRecording(){renderLine("recording",null,recordingRoute,0);}
+    private void renderRecording(){
+        if(recordingSegments.isEmpty()){renderLine("recording",null,recordingRoute,0);return;}
+        if(style==null||!style.isFullyLoaded())return;
+        GeoJsonSource source=style.getSourceAs("recording");if(source==null)return;
+        List<Feature> features=new ArrayList<>();
+        for(List<org.osmdroid.util.GeoPoint> segment:recordingSegments){
+            if(segment.size()<2)continue;
+            List<Point> geometry=new ArrayList<>();
+            for(org.osmdroid.util.GeoPoint p:segment)geometry.add(Point.fromLngLat(p.getLongitude(),p.getLatitude()));
+            features.add(Feature.fromGeometry(LineString.fromLngLats(geometry)));
+        }
+        source.setGeoJson(FeatureCollection.fromFeatures(features));
+    }
     private void renderApproach(){renderLine("approach","approach-arrows",approach,1300);}
     private void renderLine(String sourceId,String arrowsId,List<org.osmdroid.util.GeoPoint> input,double arrowHorizon){if(style==null||!style.isFullyLoaded())return;GeoJsonSource source=style.getSourceAs(sourceId);if(source==null)return;List<Point> p=new ArrayList<>();int stride=Math.max(1,(int)Math.ceil(input.size()/(double)MAX_ROUTE_RENDER_POINTS));for(int i=0;i<input.size();i+=stride){org.osmdroid.util.GeoPoint x=input.get(i);p.add(Point.fromLngLat(x.getLongitude(),x.getLatitude()));}if(!input.isEmpty()&&((input.size()-1)%stride)!=0){org.osmdroid.util.GeoPoint x=input.get(input.size()-1);p.add(Point.fromLngLat(x.getLongitude(),x.getLatitude()));}int aheadEnd=0;double distance=0;for(int i=1;i<p.size();i++){float[] d=new float[1];Location.distanceBetween(p.get(i-1).latitude(),p.get(i-1).longitude(),p.get(i).latitude(),p.get(i).longitude(),d);distance+=d[0];aheadEnd=i;if(distance>arrowHorizon)break;}List<Point> ahead=new ArrayList<>();int aheadCount=aheadEnd+1,aheadStride=Math.max(1,(int)Math.ceil(aheadCount/(double)MAX_ARROW_RENDER_POINTS));for(int i=0;i<=aheadEnd&&i<p.size();i+=aheadStride)ahead.add(p.get(i));if(aheadEnd>0&&aheadEnd<p.size()&&(ahead.isEmpty()||ahead.get(ahead.size()-1)!=p.get(aheadEnd)))ahead.add(p.get(aheadEnd));GeoJsonSource arrows=arrowsId==null?null:style.getSourceAs(arrowsId);if(arrows!=null)arrows.setGeoJson(ahead.size()<2?FeatureCollection.fromFeatures(new Feature[0]):FeatureCollection.fromFeatures(new Feature[]{Feature.fromGeometry(LineString.fromLngLats(ahead))}));source.setGeoJson(p.size()<2?FeatureCollection.fromFeatures(new Feature[0]):FeatureCollection.fromFeatures(new Feature[]{Feature.fromGeometry(LineString.fromLngLats(p))}));}
     void update(Location fix,boolean guiding){update(fix,guiding,Float.MAX_VALUE);}
