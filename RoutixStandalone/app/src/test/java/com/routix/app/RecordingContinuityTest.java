@@ -65,6 +65,12 @@ public class RecordingContinuityTest {
         assertTrue(normalized.points.get(2).breakBefore);
     }
 
+    @Test public void highwayDistanceAgreesBetweenRouteAndLiveRecovery() {
+        RouteStore.Point a=point(48.81,1000,false),b=point(48.816,21000,false);
+        assertTrue(RouteStore.segmentMeters(a,b)>600);
+        assertEquals(0,RouteStore.segmentMeters(b,point(48.83,80000,true)),0);
+    }
+
     @Test public void largeGapIsNeverCountedAsPlausibleContinuousMovement() {
         assertFalse(GpsMovementFilter.plausible(180,60000,5,5));
         assertTrue(GpsMovementFilter.plausible(8,1000,5,5));

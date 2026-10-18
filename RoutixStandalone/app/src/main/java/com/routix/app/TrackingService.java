@@ -49,13 +49,17 @@ public final class TrackingService extends Service implements LocationListener {
             List<RouteStore.Point> p=new ArrayList<>();List<RouteStore.Event> e=new ArrayList<>();journal.read(p,e);
             boolean rec=Boolean.parseBoolean(journal.readState("recording","false")),pause=Boolean.parseBoolean(journal.readState("paused","false"));
             long start=parseLong(journal.readState("started","0"),0);
+            if(!rec&&!p.isEmpty()){
+                store.saveDraft(p,e,start>0?start:p.get(0).time);
+                journal.clearRecording();p.clear();e.clear();
+            }
             String file=journal.readState("guidance","");float progress=parseFloat(journal.readState("progress","0"),0);
             long gStarted=parseLong(journal.readState("guidance_started","0"),0);
             double gDistance=parseDouble(journal.readState("guidance_distance","0"),0);
             int gReverse=(int)parseLong(journal.readState("guidance_reverse","0"),0),gTwo=(int)parseLong(journal.readState("guidance_two_sides","0"),0);
             RouteStore.Summary recovered=file.isEmpty()?null:store.parse(new File(store.routesDir(),new File(file).getName()));boolean validGuidance=recovered!=null&&recovered.points.size()>1;
             if(!file.isEmpty()&&!validGuidance){journal.state("guidance","");journal.state("progress","0");DiagnosticLog.info("stale guidance checkpoint cleared");}
-            main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++){RouteStore.Point a=points.get(i-1),b=points.get(i);if(!b.breakBefore&&(a.time<=0||b.time<=0||(b.time>=a.time&&b.time-a.time<=30000)))distance+=RouteNormalizer.distanceM(a,b);}
+            main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++)distance+=RouteStore.segmentMeters(points.get(i-1),points.get(i));
                 if(validGuidance){guidanceStartedAt=gStarted>0?gStarted:System.currentTimeMillis();guidanceTravelDistance=Math.max(0,gDistance);guidanceReverseAdded=Math.max(0,gReverse);guidanceTwoSidesAdded=Math.max(0,gTwo);installGuidance(recovered,progress);}
                 ready=true;if(deferredAction!=null){String action=deferredAction;deferredAction=null;applyNotificationAction(action);}if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
         }catch(Exception ex){DiagnosticLog.error("session recovery",ex);main.post(()->{if(closed)return;ready=true;if(foreground&&!recording&&guidance==null)idle();publish();if(visible&&!subscribed)subscribe();});}});
@@ -136,7 +140,7 @@ public final class TrackingService extends Service implements LocationListener {
     private void subscribe(){requestProfile(recording||guidance!=null?GPS_MOVING:GPS_IDLE);}
     private void requestProfile(int profile){
         if((subscribed&&profile==gpsProfile)||(!visible&&!foreground))return;
-        if(ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)return;
+        if(ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){unsubscribe();return;}
         long minTime;float minDistance;
         boolean saver=prefs.getBoolean("battery_saver",true);
         if(!saver){profile=GPS_MOVING;minTime=1000;minDistance=0;}
@@ -145,6 +149,7 @@ public final class TrackingService extends Service implements LocationListener {
         else {minTime=1800;minDistance=1.5f;}
         try{
             if(subscribed)manager.removeUpdates(this);
+            subscribed=false;gpsProfile=-1;
             manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,minTime,minDistance,this,Looper.getMainLooper());
             subscribed=true;gpsProfile=profile;DiagnosticLog.info("GPS profile="+profile+" interval="+minTime+"ms distance="+minDistance+"m");
         }catch(RuntimeException e){DiagnosticLog.error("GPS subscribe",e);}

@@ -56,7 +56,7 @@ final class RouteStore {
         try(FileInputStream in=new FileInputStream(f)){XmlPullParserFactory factory=XmlPullParserFactory.newInstance();factory.setNamespaceAware(true);XmlPullParser p=factory.newPullParser();p.setInput(in,"UTF-8");int ev=p.getEventType();boolean w=false,t=false,nextSegment=false;String pointTag=null;double lat=0,lon=0;String label="Repère",type="EVENT";long wt=0,tt=0;float wa=0,ta=0;
             while(ev!=XmlPullParser.END_DOCUMENT){if(ev==XmlPullParser.START_TAG){String n=p.getName();if("trkseg".equals(n)){nextSegment=!s.points.isEmpty();}else if("wpt".equals(n)){w=true;lat=dbl(p.getAttributeValue(null,"lat"));lon=dbl(p.getAttributeValue(null,"lon"));label="Repère";type="EVENT";wt=0;wa=0;}else if("trkpt".equals(n)||"rtept".equals(n)){t=true;pointTag=n;lat=dbl(p.getAttributeValue(null,"lat"));lon=dbl(p.getAttributeValue(null,"lon"));tt=0;ta=0;}else if("name".equals(n)&&w)label=p.nextText();else if("time".equals(n)){long z=time(p.nextText());if(w)wt=z;else if(t)tt=z;}else if("event".equals(n)&&w)type=p.nextText();else if("accuracy".equals(n)){float a=flt(p.nextText());if(w)wa=a;else if(t)ta=a;}}else if(ev==XmlPullParser.END_TAG){String n=p.getName();if("wpt".equals(n)){if(validCoordinates(lat,lon))s.events.add(new Event(type,label,lat,lon,wt,wa));w=false;}else if(t&&n.equals(pointTag)){if(validCoordinates(lat,lon))s.points.add(new Point(lat,lon,tt,ta,nextSegment));nextSegment=false;if(tt>0){if(s.firstTime==0)s.firstTime=tt;s.lastTime=tt;}t=false;pointTag=null;}}ev=p.next();}}
         catch(Exception ex){DiagnosticLog.error("GPX parse",ex);s.points.clear();s.events.clear();}
-        for(int i=1;i<s.points.size();i++){Point a=s.points.get(i-1),b=s.points.get(i);float[] d=new float[1];Location.distanceBetween(a.lat,a.lon,b.lat,b.lon,d);if(!b.breakBefore && (a.time<=0||b.time<=0||(b.time>=a.time&&b.time-a.time<=30000))&&d[0]<500)s.distanceM+=d[0];}s.durationMs=s.lastTime>s.firstTime?s.lastTime-s.firstTime:0;return s;
+        for(int i=1;i<s.points.size();i++){Point a=s.points.get(i-1),b=s.points.get(i);float[] d=new float[1];Location.distanceBetween(a.lat,a.lon,b.lat,b.lon,d);if(!b.breakBefore)s.distanceM+=segmentMeters(a,b);}s.durationMs=s.lastTime>s.firstTime?s.lastTime-s.firstTime:0;return s;
     }
 
     File importGpx(Uri uri){
@@ -109,5 +109,12 @@ final class RouteStore {
     boolean isFavorite(File f){return f!=null&&prefs.getBoolean("favorite_"+f.getName(),false);} void setFavorite(File f,boolean v){if(f!=null)prefs.edit().putBoolean("favorite_"+f.getName(),v).apply();}
 
     private static List<Point> copyP(List<Point> p){return p==null?new ArrayList<>():new ArrayList<>(p);}private static List<Event> copyE(List<Event> e){return e==null?new ArrayList<>():new ArrayList<>(e);}
+    static double segmentMeters(Point a,Point b){
+        if(a==null||b==null||b.breakBefore)return 0;
+        double d=RouteNormalizer.distanceM(a,b);
+        if(a.time>0&&b.time>0)
+            return GpsMovementFilter.plausible(d,b.time-a.time,Math.max(0,a.accuracy),Math.max(0,b.accuracy))?d:0;
+        return d<500?d:0;
+    }
     static String iso(long ms){return Instant.ofEpochMilli(Math.max(0,ms)).toString();}static long time(String s){try{return Instant.parse(s).toEpochMilli();}catch(DateTimeParseException ex){return 0;}}static boolean validCoordinates(double lat,double lon){return Double.isFinite(lat)&&Double.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180;}static double dbl(String s){try{return Double.parseDouble(s);}catch(Exception ex){return Double.NaN;}}static float flt(String s){try{return Float.parseFloat(s);}catch(Exception ex){return 0;}}static String escape(String s){return s==null?"":s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&apos;");}
 }
