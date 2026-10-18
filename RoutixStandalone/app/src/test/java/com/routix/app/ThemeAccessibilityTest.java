@@ -22,8 +22,8 @@ public class ThemeAccessibilityTest {
         }
     }
     @Test public void mapFollowsThemeUnlessExplicitlyOverridden(){
-        SharedPreferences p=RuntimeEnvironment.getApplication().getSharedPreferences("theme_test",Context.MODE_PRIVATE);p.edit().clear().putString("theme_flavor","map-light").commit();
+        SharedPreferences p=RuntimeEnvironment.getApplication().getSharedPreferences("theme_test",Context.MODE_PRIVATE);p.edit().clear().putString("map_appearance","light").commit();
         assertFalse(MapStyles.dark(p));p.edit().putString("map_appearance","dark").commit();assertTrue(MapStyles.dark(p));
-        p.edit().putString("theme_flavor","sand").putString("map_appearance","theme").commit();assertEquals("sand",MapStyles.tokens(p).flavor);
+        p.edit().putString("map_appearance","theme").commit();assertEquals("sand",MapStyles.tokens(p).flavor);
     }
 }
