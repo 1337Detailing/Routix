@@ -10,4 +10,16 @@
     <string name="tab_record">Enregistrer</string>
     <string name="tab_routes">Tournées</string>
     <string name="tab_more">Plus</string>
+    <string name="screen_record">Enregistrer</string>
+    <string name="screen_hours">Heures</string>
+    <string name="screen_gpx">Outils GPX</string>
+    <string name="screen_more">Plus</string>
+    <string name="screen_stats">Statistiques</string>
+    <string name="screen_settings">Réglages</string>
+    <string name="screen_plan">Plan vers parcours</string>
+    <string name="menu_hours">Heures travaillées</string>
+    <string name="menu_offline">Cartes hors ligne</string>
+    <string name="menu_updates">Mises à jour</string>
+    <string name="menu_diagnostics">Exporter le diagnostic</string>
+    <string name="menu_plan_beta">Plan vers parcours (bêta)</string>
 </resources>

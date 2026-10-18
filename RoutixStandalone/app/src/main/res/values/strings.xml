@@ -10,4 +10,16 @@
     <string name="tab_record">Record</string>
     <string name="tab_routes">Routes</string>
     <string name="tab_more">More</string>
+    <string name="screen_record">Record</string>
+    <string name="screen_hours">Hours</string>
+    <string name="screen_gpx">GPX tools</string>
+    <string name="screen_more">More</string>
+    <string name="screen_stats">Statistics</string>
+    <string name="screen_settings">Settings</string>
+    <string name="screen_plan">Plan to route</string>
+    <string name="menu_hours">Work hours</string>
+    <string name="menu_offline">Offline maps</string>
+    <string name="menu_updates">Updates</string>
+    <string name="menu_diagnostics">Export diagnostic</string>
+    <string name="menu_plan_beta">Plan to route (beta)</string>
 </resources>
