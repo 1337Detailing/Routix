@@ -44,6 +44,7 @@ final class RoutixTheme {
             success=green;error=red;warning=peach;info=blue;navigation=SAND;
         }
         int readable(int color) {
+            if (color==Color.BLACK) return color; // Ink reserved for sand-filled controls.
             return ColorUtils.calculateContrast(color,base)>=4.5 &&
                 ColorUtils.calculateContrast(color,mantle)>=4.5?color:text;
         }
