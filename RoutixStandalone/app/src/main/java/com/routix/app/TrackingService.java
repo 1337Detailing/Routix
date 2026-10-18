@@ -24,6 +24,8 @@ public final class TrackingService extends Service implements LocationListener {
 
     long guidanceStartedAt;double guidanceTravelDistance;int guidanceReverseAdded,guidanceTwoSidesAdded;
 
+    static final String ACTION_PAUSE="com.routix.app.action.PAUSE",ACTION_RESUME="com.routix.app.action.RESUME",ACTION_SAVE="com.routix.app.action.SAVE",ACTION_STOP_GUIDANCE="com.routix.app.action.STOP_GUIDANCE";
+    private String deferredAction;
     private static final int GPS_IDLE=0,GPS_MOVING=1,GPS_STATIONARY=2;
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService io=Executors.newSingleThreadExecutor();
@@ -36,6 +38,7 @@ public final class TrackingService extends Service implements LocationListener {
     private final java.util.concurrent.atomic.AtomicBoolean draftPending=new java.util.concurrent.atomic.AtomicBoolean();
     private final RouteAwareAnalyzer routeAware=new RouteAwareAnalyzer();private RoadContextProvider roadContext;private StreetPassageStore streetPassages;
 
+    private final Runnable signalHealth=new Runnable(){@Override public void run(){if(!closed){if(recording||guidance!=null)publish();main.postDelayed(this,10000);}}};
     private final Runnable draft=new Runnable(){public void run(){
         if(recording)saveDraft();
         if(!closed)main.postDelayed(this,prefs!=null&&prefs.getBoolean("battery_saver",true)?30000:15000);
@@ -47,30 +50,55 @@ public final class TrackingService extends Service implements LocationListener {
             List<RouteStore.Point> p=new ArrayList<>();List<RouteStore.Event> e=new ArrayList<>();journal.read(p,e);
             boolean rec=Boolean.parseBoolean(journal.readState("recording","false")),pause=Boolean.parseBoolean(journal.readState("paused","false"));
             long start=parseLong(journal.readState("started","0"),0);
+            if(!rec&&!p.isEmpty()){
+                store.saveDraft(p,e,start>0?start:p.get(0).time);
+                journal.clearRecording();p.clear();e.clear();
+            }
             String file=journal.readState("guidance","");float progress=parseFloat(journal.readState("progress","0"),0);
             long gStarted=parseLong(journal.readState("guidance_started","0"),0);
             double gDistance=parseDouble(journal.readState("guidance_distance","0"),0);
             int gReverse=(int)parseLong(journal.readState("guidance_reverse","0"),0),gTwo=(int)parseLong(journal.readState("guidance_two_sides","0"),0);
             RouteStore.Summary recovered=file.isEmpty()?null:store.parse(new File(store.routesDir(),new File(file).getName()));boolean validGuidance=recovered!=null&&recovered.points.size()>1;
             if(!file.isEmpty()&&!validGuidance){journal.state("guidance","");journal.state("progress","0");DiagnosticLog.info("stale guidance checkpoint cleared");}
-            main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++)distance+=RouteNormalizer.distanceM(points.get(i-1),points.get(i));
+            main.post(()->{if(closed)return;points.addAll(p);events.addAll(e);recording=rec;paused=pause;started=start;for(int i=1;i<points.size();i++)distance+=RouteStore.segmentMeters(points.get(i-1),points.get(i));
                 if(validGuidance){guidanceStartedAt=gStarted>0?gStarted:System.currentTimeMillis();guidanceTravelDistance=Math.max(0,gDistance);guidanceReverseAdded=Math.max(0,gReverse);guidanceTwoSidesAdded=Math.max(0,gTwo);installGuidance(recovered,progress);}
-                ready=true;if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
+                ready=true;if(deferredAction!=null){String action=deferredAction;deferredAction=null;applyNotificationAction(action);}if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
         }catch(Exception ex){DiagnosticLog.error("session recovery",ex);main.post(()->{if(closed)return;ready=true;if(foreground&&!recording&&guidance==null)idle();publish();if(visible&&!subscribed)subscribe();});}});
-        main.postDelayed(draft,30000);
+        main.postDelayed(draft,30000);main.postDelayed(signalHealth,10000);
     }
 
     @Override public IBinder onBind(Intent intent){return new LocalBinder();}
     @Override public int onStartCommand(Intent intent,int flags,int id){
-        try{promote();if(ready)subscribe();return START_STICKY;}catch(RuntimeException e){DiagnosticLog.error("foreground start",e);stopSelf();return START_NOT_STICKY;}
+        try{promote();String action=intent==null?null:intent.getAction();if(action!=null){if(ready)applyNotificationAction(action);else deferredAction=action;}if(ready)subscribe();return START_STICKY;}catch(RuntimeException e){DiagnosticLog.error("foreground start",e);stopSelf();return START_NOT_STICKY;}
+    }
+    private void applyNotificationAction(String action){
+        if(ACTION_PAUSE.equals(action)&&recording&&!paused)togglePause();
+        else if(ACTION_RESUME.equals(action)&&recording&&paused)togglePause();
+        else if(ACTION_SAVE.equals(action)&&recording&&!saving){
+            if(points.size()>=2)finish(file->{if(file==null)DiagnosticLog.info("notification save unsuccessful; session retained");});
+            else {if(!paused)togglePause();DiagnosticLog.info("notification save deferred: fewer than two fixes");}
+        }else if(ACTION_STOP_GUIDANCE.equals(action)&&guidance!=null)stopGuidance();
+    }
+    private PendingIntent notificationAction(String action,int code){
+        Intent i=new Intent(this,TrackingService.class).setAction(action);
+        return PendingIntent.getService(this,code,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
     }
     private Notification trackingNotification(){
         Intent open=new Intent(this,RoutixActivity.class);PendingIntent pending=PendingIntent.getActivity(this,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        String title="Routix · tournée active",text="Suivi GPS adaptatif actif. Toucher pour reprendre.";int progress=0;
+        String title=getString(R.string.notification_active),text=getString(R.string.notification_open);int progress=0;
+        if(recording){title=getString(paused?R.string.notification_paused:R.string.notification_recording);
+            text=getString(R.string.notification_points,points.size());
+            if(location==null||SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos()>20_000_000_000L)text=getString(R.string.notification_gps_lost);
+        }
         if(guidance!=null&&guidanceState!=null){progress=guidanceState.progressPercent;title="Routix · "+progress+" %";text=formatIslandDistance(guidanceState.remainingM)+" restant";if(guidanceState.nextEvent!=null&&guidanceState.distanceToNextEventM<1000)text+=" · "+guidanceState.nextEvent.label;}
         NotificationCompat.Builder b=new NotificationCompat.Builder(this,"tracking").setSmallIcon(R.drawable.ic_tracking).setColor(RoutixTheme.from(this).accent).setContentTitle(title).setContentText(text).setContentIntent(pending).setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setCategory(NotificationCompat.CATEGORY_NAVIGATION);
         if(guidance!=null&&guidanceState!=null){String summary=formatIslandDistance(guidanceState.remainingM)+" · "+progress+" %";b.setSubText(summary);b.getExtras().putCharSequence("android.shortCriticalText",formatIslandDistance(guidanceState.remainingM));}
         if(guidance!=null)b.addExtras(NotificationCapsuleCompat.guidance(this,title,text,progress));
+        if(recording&&!saving){
+            boolean isPaused=paused;
+            b.addAction(0,getString(isPaused?R.string.notification_resume:R.string.notification_pause),notificationAction(isPaused?ACTION_RESUME:ACTION_PAUSE,101));
+            b.addAction(0,getString(R.string.notification_save),notificationAction(ACTION_SAVE,102));
+        }else if(guidance!=null)b.addAction(0,getString(R.string.notification_stop),notificationAction(ACTION_STOP_GUIDANCE,103));
         return b.build();
     }
     private static String formatIslandDistance(float meters){if(!Float.isFinite(meters))return "—";return meters>=1000?String.format(Locale.FRANCE,"%.1f km",meters/1000f):Math.round(Math.max(0,meters))+" m";}
@@ -90,13 +118,13 @@ public final class TrackingService extends Service implements LocationListener {
     private void persistProgress(float progress,boolean force){long now=SystemClock.elapsedRealtime();if(!force&&now-lastProgressWriteMs<4000&&lastProgressWriteM>=0&&Math.abs(progress-lastProgressWriteM)<12f)return;lastProgressWriteMs=now;lastProgressWriteM=progress;write(()->journal.state("progress",Float.toString(progress)));}
     private void persistGuidanceStats(boolean force){if(guidance==null&&!force)return;long now=SystemClock.elapsedRealtime();if(!force&&now-lastStatsWriteMs<15000)return;lastStatsWriteMs=now;long start=guidanceStartedAt;double dist=guidanceTravelDistance;int rev=guidanceReverseAdded,two=guidanceTwoSidesAdded;write(()->{journal.state("guidance_started",Long.toString(start));journal.state("guidance_distance",Double.toString(dist));journal.state("guidance_reverse",Integer.toString(rev));journal.state("guidance_two_sides",Integer.toString(two));});}
 
-    boolean beginRecording(){if(!ready||saving||recording||!activate())return false;points.clear();events.clear();distance=0;lastAcceptedRecordFix=null;recordFilter.reset();routeAware.reset();streetPassages.resetSession();started=System.currentTimeMillis();recording=true;paused=false;long start=started;write(()->{journal.clearRecording();journal.state("started",Long.toString(start));journal.state("recording","true");store.clearDraft();});requestProfile(GPS_MOVING);publish();return true;}
+    boolean beginRecording(){if(!ready||saving||recording||guidance!=null||!activate())return false;points.clear();events.clear();distance=0;lastAcceptedRecordFix=null;recordFilter.reset();routeAware.reset();streetPassages.resetSession();started=System.currentTimeMillis();recording=true;paused=false;long start=started;write(()->{journal.clearRecording();journal.state("started",Long.toString(start));journal.state("recording","true");store.clearDraft();});requestProfile(GPS_MOVING);publish();return true;}
     void recoverDraft(RouteStore.Summary draft){if(!beginRecording())return;points.addAll(draft.points);events.addAll(draft.events);distance=draft.distanceM;started=draft.firstTime;List<RouteStore.Point> p=new ArrayList<>(points);List<RouteStore.Event> e=new ArrayList<>(events);long start=started;write(()->{journal.state("started",Long.toString(start));for(RouteStore.Point x:p)journal.point(x);for(RouteStore.Event x:e)journal.event(x);});publish();}
-    void togglePause(){if(!recording||saving)return;paused=!paused;boolean value=paused;write(()->journal.state("paused",Boolean.toString(value)));saveDraft();publish();}
+    void togglePause(){if(!recording||saving)return;paused=!paused;if(!paused){lastAcceptedRecordFix=null;recordFilter.reset();routeAware.reset();}boolean value=paused;write(()->journal.state("paused",Boolean.toString(value)));saveDraft();publish();}
     void addEvent(String type,String label){if(!recording||paused||location==null)return;RouteStore.Event e=new RouteStore.Event(type,label,location.getLatitude(),location.getLongitude(),System.currentTimeMillis(),location.getAccuracy());events.add(e);write(()->journal.event(e));publish();}
     void finish(java.util.function.Consumer<File> result){if(saving||points.size()<2)return;saving=true;boolean wasPaused=paused;paused=true;List<RouteStore.Point> p=new ArrayList<>(points);List<RouteStore.Event> e=new ArrayList<>(events);long start=started;publish();io.execute(()->{File f=null;try{f=store.createRoute(p,e,start);if(f!=null){journal.clearRecording();store.clearDraft();streetPassages.save(f.getName());}}catch(RuntimeException ex){DiagnosticLog.error("finish recording",ex);}File saved=f;main.post(()->{saving=false;if(saved!=null){recording=false;paused=false;points.clear();events.clear();distance=0;idle();}else paused=wasPaused;publish();result.accept(saved);});});}
 
-    void beginGuidance(RouteStore.Summary s){if(!ready||s==null||s.points.size()<2||!activate())return;
+    void beginGuidance(RouteStore.Summary s){if(!ready||recording||guidance!=null||s==null||s.points.size()<2||!activate())return;
         guidanceStartedAt=System.currentTimeMillis();guidanceTravelDistance=0;lastAcceptedGuidanceFix=null;guidanceReverseAdded=0;guidanceTwoSidesAdded=0;lastStatsWriteMs=0;
         installGuidance(s,0);String name=s.file.getName();long start=guidanceStartedAt;write(()->{journal.state("progress","0");journal.state("guidance",name);journal.state("guidance_started",Long.toString(start));journal.state("guidance_distance","0");journal.state("guidance_reverse","0");journal.state("guidance_two_sides","0");});requestProfile(GPS_MOVING);publish();
     }
@@ -113,7 +141,7 @@ public final class TrackingService extends Service implements LocationListener {
     private void subscribe(){requestProfile(recording||guidance!=null?GPS_MOVING:GPS_IDLE);}
     private void requestProfile(int profile){
         if((subscribed&&profile==gpsProfile)||(!visible&&!foreground))return;
-        if(ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)return;
+        if(ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){unsubscribe();return;}
         long minTime;float minDistance;
         boolean saver=prefs.getBoolean("battery_saver",true);
         if(!saver){profile=GPS_MOVING;minTime=1000;minDistance=0;}
@@ -122,6 +150,7 @@ public final class TrackingService extends Service implements LocationListener {
         else {minTime=1800;minDistance=1.5f;}
         try{
             if(subscribed)manager.removeUpdates(this);
+            subscribed=false;gpsProfile=-1;
             manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,minTime,minDistance,this,Looper.getMainLooper());
             subscribed=true;gpsProfile=profile;DiagnosticLog.info("GPS profile="+profile+" interval="+minTime+"ms distance="+minDistance+"m");
         }catch(RuntimeException e){DiagnosticLog.error("GPS subscribe",e);}
@@ -141,14 +170,14 @@ public final class TrackingService extends Service implements LocationListener {
 
         try{if(recording&&!paused&&!saving&&fix.getAccuracy()<=prefs.getInt("record_accuracy",45)){
             Location ref=lastAcceptedRecordFix;long dt=ref==null?0:(fix.getElapsedRealtimeNanos()-ref.getElapsedRealtimeNanos())/1_000_000L;
-            boolean plausible=ref==null||GpsMovementFilter.plausible(ref.distanceTo(fix),dt,ref.getAccuracy(),fix.getAccuracy());
+            boolean gap=!points.isEmpty()&&(ref==null||dt>30000);if(gap){recordFilter.reset();routeAware.reset();}boolean plausible=gap||ref==null||GpsMovementFilter.plausible(ref.distanceTo(fix),dt,ref.getAccuracy(),fix.getAccuracy());
             if(plausible){
                 Location filtered=recordFilter.update(fix);RouteAwareAnalyzer.Observation road=routeAware.update(filtered,roadContext.nearby(filtered));Location smart=road.snapped?road.location:filtered;
-                RouteStore.Point p=new RouteStore.Point(smart.getLatitude(),smart.getLongitude(),fix.getTime(),smart.getAccuracy());
-                double d=points.isEmpty()?0:RouteNormalizer.distanceM(points.get(points.size()-1),p);streetPassages.observe(road,fix.getTime(),d);
+                RouteStore.Point p=new RouteStore.Point(smart.getLatitude(),smart.getLongitude(),fix.getTime(),smart.getAccuracy(),gap);
+                double d=points.isEmpty()||gap?0:RouteNormalizer.distanceM(points.get(points.size()-1),p);streetPassages.observe(road,fix.getTime(),d);
                 // Adaptive spacing: dense at low speed/corners, slightly wider at road speed.
                 double spacing=prefs.getInt("record_spacing",2);if(fix.hasSpeed())spacing=Math.max(spacing,Math.min(5.0,1.5+fix.getSpeed()*.10));
-                if(points.isEmpty()||d>=spacing){distance+=d;points.add(p);write(()->journal.point(p));}
+                if(points.isEmpty()||gap||d>=spacing){distance+=d;points.add(p);write(()->journal.point(p));}
                 // Plausibility must reference the accepted RAW fix, not the filtered coordinate.
                 lastAcceptedRecordFix=new Location(fix);
             }

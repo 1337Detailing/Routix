@@ -42,7 +42,7 @@ final class RouteNormalizer {
             if(p.accuracy>80 && p.accuracy!=0){invalid++;continue;}
             if(!valid.isEmpty()) {
                 RouteStore.Point prev=valid.get(valid.size()-1);
-                if(distanceM(prev,p)<MIN_POINT_SPACING_M){dup++;continue;}
+                if(!p.breakBefore && distanceM(prev,p)<MIN_POINT_SPACING_M){dup++;continue;}
             }
             valid.add(p);
         }
@@ -51,6 +51,7 @@ final class RouteNormalizer {
 
         boolean[] keep=new boolean[valid.size()];
         keep[0]=true; keep[valid.size()-1]=true;
+        for(int i=1;i<valid.size();i++)if(valid.get(i).breakBefore){keep[i]=true;keep[i-1]=true;}
         for(int i=1;i<valid.size()-1;i++){
             RouteStore.Point a=valid.get(i-1),b=valid.get(i),c=valid.get(i+1);
             if(turnAngle(a,b,c)>=SHARP_TURN_DEG) keep[i]=true;
@@ -58,7 +59,7 @@ final class RouteNormalizer {
         int anchor=0;
         for(int i=1;i<keep.length;i++){
             if(!keep[i]) continue;
-            simplify(valid,anchor,i,keep);
+            if(!valid.get(i).breakBefore)simplify(valid,anchor,i,keep);
             anchor=i;
         }
         List<RouteStore.Point> out=new ArrayList<>();

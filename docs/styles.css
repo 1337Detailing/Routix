@@ -88,3 +88,6 @@ svg{display:block}img{max-width:100%;display:block}p,h1,h2,h3{margin-block-start
 .btn,.nav-small-cta{transition:background .3s var(--ease),color .3s var(--ease),border-color .3s var(--ease),transform .3s var(--ease)}
 .btn:active,.nav-small-cta:active{transform:scale(.97)}
 @media(prefers-reduced-motion:reduce){.btn,.nav-small-cta{transition:none;transform:none!important}}
+
+/* Map-pin identity on the closing screen. */
+.end-mark-logo{width:clamp(96px,13vw,170px);height:auto;display:block;object-fit:contain}

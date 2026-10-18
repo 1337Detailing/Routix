@@ -70,7 +70,7 @@ public class RoutixActivity extends AppCompatActivity {
 
     private SharedPreferences prefs; private RouteStore store; private RouteFolderStore folderStore; private WorkHoursStore hoursStore; private Location lastLocation; private final RoadRestrictionProvider roadRestrictions=new RoadRestrictionProvider();
     private ModernMapController modern; private TrackingService tracker; private boolean bound,visible,headingUp=true,offline; private Bundle mapState; private boolean recoveryOffered;
-    private FrameLayout root; private MapView map; private View topBar,dock,recordSheet; private LinearLayout contentHost; private CompactSpeedometer headerSpeed; private TextView speedLimit; private ImageView mapLogo;
+    private FrameLayout root; private MapView map; private View topBar,dock,recordSheet; private LinearLayout contentHost; private CompactSpeedometer headerSpeed; private TextView speedLimit,gpsStatus,recordElapsed,recordAverage; private ImageView mapLogo;
     private Polyline remainingLine,aheadLine,approachLine,recordingLine; private RouteArrowsOverlay routeArrows,approachArrows; private int systemTop,systemBottom; private String selectedTab="map"; private int accent;
     private boolean recording,paused,guiding,guidanceCameraFollow=true; private long recordingStarted,guidanceSession,lastOfflineCameraMs; private double recordedDistance;
     private DepartureNavigation.Result approachRoute; private int approachIndex; private boolean approachingStart,approachPending,finishSummaryShown; private long approachGeneration; private String approachRouteName;
@@ -127,7 +127,7 @@ public class RoutixActivity extends AppCompatActivity {
     private View buildTopBar(){
         LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(5),dp(8),dp(5));bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(2));ImageView brandIcon=new ImageView(this);brandIcon.setImageResource(R.drawable.ic_routix);brandIcon.setContentDescription(getString(R.string.app_name));LinearLayout.LayoutParams brandLp=new LinearLayout.LayoutParams(dp(38),dp(38));brandLp.rightMargin=dp(5);bar.addView(brandIcon,brandLp);
         headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(116),dp(50)));speedLimit=text("—",15,Typeface.BOLD,TEXT);speedLimit.setGravity(Gravity.CENTER);speedLimit.setContentDescription("Limitation de vitesse OSM");speedLimit.setBackground(surface(SURFACE2,99));LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(dp(48),dp(42));sl.leftMargin=dp(4);bar.addView(speedLimit,sl);
-        TextView status=text("GPS",11f,Typeface.BOLD,MUTED);status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
+        gpsStatus=text("GPS",11f,Typeface.BOLD,MUTED);TextView status=gpsStatus;status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
         LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.width=0;bar.addView(status,statusLp);
         return bar;
     }
@@ -170,6 +170,13 @@ public class RoutixActivity extends AppCompatActivity {
 
     private View recordPage(){
         ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_record),"");recordStatus=text(recording?(paused?"EN PAUSE":"ENREGISTREMENT ACTIF"):"PRÊT",13,Typeface.BOLD,recording?GREEN:MUTED);p.addView(recordStatus);LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(12),0,dp(12));recordDistance=metric(formatDistance(recordedDistance),"DISTANCE");recordPoints=metric(String.valueOf(tracker==null?0:tracker.points.size()),"POINTS");recordEvents=metric(String.valueOf(tracker==null?0:tracker.events.size()),"REPÈRES");stats.addView(recordDistance,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordPoints,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordEvents,new LinearLayout.LayoutParams(0,dp(68),1));p.addView(stats);
+        LinearLayout live=new LinearLayout(this);
+        RecordingSummary.Snapshot liveStats=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
+        recordElapsed=metric(formatDuration(liveStats.elapsedMs),getString(R.string.metric_duration));
+        recordAverage=metric(String.format(Locale.getDefault(),"%.1f km/h",liveStats.averageKmh),getString(R.string.metric_average));
+        live.addView(recordElapsed,new LinearLayout.LayoutParams(0,dp(66),1));
+        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(66),1);avgLp.leftMargin=dp(8);
+        live.addView(recordAverage,avgLp);p.addView(live);
         LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);recordMain=pill(recording?"Terminer et sauvegarder":"Commencer l’enregistrement",recording?RED:accent);recordMain.setOnClickListener(v->{press(v);if(recording)finishRecording();else startRecording();});main.addView(recordMain,new LinearLayout.LayoutParams(-1,dp(60)));LinearLayout flags=new LinearLayout(this);flags.setPadding(0,dp(10),0,0);main.addView(flags);reverseButton=pill("Marche arrière",SURFACE2);twoSidesButton=pill("2 côtés",SURFACE2);reverseButton.setOnClickListener(v->addEvent("REVERSE","Marche arrière"));twoSidesButton.setOnClickListener(v->addEvent("TWO_SIDES","2 côtés"));LinearLayout.LayoutParams b1=new LinearLayout.LayoutParams(0,dp(54),1);b1.leftMargin=dp(8);flags.addView(reverseButton,b1);LinearLayout.LayoutParams b2=new LinearLayout.LayoutParams(0,dp(54),1);b2.leftMargin=dp(7);flags.addView(twoSidesButton,b2);p.addView(main);
         pauseButton=pill(paused?"Reprendre":"Pause",SURFACE2);pauseButton.setOnClickListener(v->togglePause());LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(46));pp.topMargin=dp(8);p.addView(pauseButton,pp);setFlagEnabled(recording);TextView info=text("Ajoute les repères au fil du parcours. La tournée est sauvegardée automatiquement.",12,Typeface.NORMAL,MUTED);info.setPadding(0,dp(17),0,0);p.addView(info);sv.addView(p);return sv;
     }
@@ -250,7 +257,7 @@ public class RoutixActivity extends AppCompatActivity {
         menu(page,"Tous les outils","Favoris, duplication, amélioration, GPX Lab et suppression",()->routeMenu(file,route));scroll.addView(page);return scroll;
     }
 
-    private void routeMenu(File f,RouteStore.Summary s){String[] x={store.isFavorite(f)?"Retirer des favoris":"Ajouter aux favoris","Déplacer dans un dossier","Renommer","Dupliquer","Améliorer la tournée","Partager le GPX","Générer le plan","Avancé : GPX Lab","Supprimer"};new RoutixDialogs.Builder(this).setTitle(store.displayName(f)).setMessage(formatDistance(s.distanceM)+" • "+formatDuration(s.durationMs)+" • "+s.points.size()+" points").setItems(x,(d,w)->{if(w==0){store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);}else if(w==1)moveRouteDialog(f);else if(w==2)rename(f);else if(w==3){File copy=store.duplicate(f);if(copy!=null)folderStore.move(copy,folderStore.folderOf(f));showTab("routes",false);}else if(w==4)improveRoute(f,s);else if(w==5)share(f);else if(w==6)PrintablePlan.open(this,s,store.displayName(f));else if(w==7){prefs.edit().putString("gpx_lab_file",f.getName()).apply();showTab("gpxlab",true);}else confirmDelete(f);}).show();}
+    private void routeMenu(File f,RouteStore.Summary s){String[] x={store.isFavorite(f)?"Retirer des favoris":"Ajouter aux favoris","Déplacer dans un dossier","Renommer","Dupliquer","Améliorer la tournée","Partager le GPX","Générer le plan","Avancé : GPX Lab",getString(R.string.export_kml),getString(R.string.export_csv),"Supprimer"};new RoutixDialogs.Builder(this).setTitle(store.displayName(f)).setMessage(formatDistance(s.distanceM)+" • "+formatDuration(s.durationMs)+" • "+s.points.size()+" points").setItems(x,(d,w)->{if(w==0){store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);}else if(w==1)moveRouteDialog(f);else if(w==2)rename(f);else if(w==3){File copy=store.duplicate(f);if(copy!=null)folderStore.move(copy,folderStore.folderOf(f));showTab("routes",false);}else if(w==4)improveRoute(f,s);else if(w==5)share(f);else if(w==6)PrintablePlan.open(this,s,store.displayName(f));else if(w==7){prefs.edit().putString("gpx_lab_file",f.getName()).apply();showTab("gpxlab",true);}else if(w==8)shareConverted(f,true);else if(w==9)shareConverted(f,false);else confirmDelete(f);}).show();}
     private void improveRoute(File source,RouteStore.Summary original){
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(18),dp(18),dp(18),dp(18));TextView title=text("Améliorer la tournée",22,Typeface.BOLD,TEXT),status=text("Préparation…",13,Typeface.NORMAL,MUTED);android.widget.ProgressBar progress=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);panel.addView(title);panel.addView(status);LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(8));pp.topMargin=dp(14);panel.addView(progress,pp);TextView note=text("L’original ne sera jamais modifié. OSM + OSRM sont utilisés uniquement après cette action.",11,Typeface.NORMAL,MUTED);note.setPadding(0,dp(12),0,0);panel.addView(note);
         AlertDialog wait=new RoutixDialogs.Builder(this).setView(panel).setNegativeButton("Annuler",(d,w)->{}).create();wait.setCanceledOnTouchOutside(false);wait.show();RoutixDialogs.style(wait,this);
@@ -266,6 +273,27 @@ public class RoutixActivity extends AppCompatActivity {
     private void moveRouteDialog(File f){List<String> folders=folderStore.folders();String[] labels=new String[folders.size()+1];labels[0]="Sans dossier";for(int i=0;i<folders.size();i++)labels[i+1]=""+folders.get(i);new RoutixDialogs.Builder(this).setTitle("Déplacer "+store.displayName(f)).setItems(labels,(d,w)->{folderStore.move(f,w==0?RouteFolderStore.ROOT:folders.get(w-1));showTab("routes",false);}).show();}
     private void rename(File f){EditText e=new EditText(this);e.setText(store.displayName(f));e.setSingleLine(true);new RoutixDialogs.Builder(this).setTitle("Nom de la tournée").setMessage("Le fichier GPX sera renommé lui aussi.").setView(e).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer",(d,w)->{String old=f.getName();File renamed=store.rename(f,e.getText().toString());if(renamed!=null)folderStore.migrateFileName(old,renamed.getName());toast(renamed==null?"Renommage impossible":"Tournée renommée");showTab("routes",false);}).show();}
     private void confirmDelete(File f){new RoutixDialogs.Builder(this).setTitle("Supprimer cette tournée ?").setMessage("Le fichier GPX et sa copie Routix seront supprimés.").setNegativeButton("Annuler",null).setPositiveButton("Supprimer",(a,b)->{folderStore.forget(f);boolean ok=store.delete(f);toast(ok?"Tournée supprimée":"Suppression impossible");showTab("routes",false);}).show();}
+    private void shareConverted(File file,boolean kml){
+        new Thread(()->{
+            try{
+                File output=RouteExporter.write(this,store.parse(file),store.displayName(file),kml);
+                runOnUiThread(()->{
+                    if(isDestroyed())return;
+                    try{
+                        Uri uri=FileProvider.getUriForFile(this,getPackageName()+".files",output);
+                        Intent intent=new Intent(Intent.ACTION_SEND);
+                        intent.setType(kml?"application/vnd.google-earth.kml+xml":"text/csv");
+                        intent.putExtra(Intent.EXTRA_STREAM,uri);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(intent,getString(R.string.share_export)));
+                    }catch(RuntimeException e){DiagnosticLog.error("share export",e);toast(getString(R.string.export_error));}
+                });
+            }catch(Exception e){
+                DiagnosticLog.error("route export",e);
+                runOnUiThread(()->{if(!isDestroyed())toast(getString(R.string.export_error));});
+            }
+        },"route-export").start();
+    }
     private void share(File f){try{Uri u=FileProvider.getUriForFile(this,getPackageName()+".files",f);Intent i=new Intent(Intent.ACTION_SEND);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_STREAM,u);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Partager la tournée"));}catch(Exception e){toast("Partage impossible");}}
 
     private View hoursPage(){
@@ -329,7 +357,9 @@ public class RoutixActivity extends AppCompatActivity {
         extra.addView(toggleRow("Animations riches","Échelle, rebond et apparition progressive des cartes.","rich_animations",true,()->{}));
         extra.addView(choiceRow("Précision GPS maximale","record_accuracy",new int[]{20,30,45,60},new String[]{"20 m","30 m","45 m","60 m"},45,()->{}));
         extra.addView(toggleRow("Optimiser les imports GPX","Recalage routier : peut modifier la trace d’origine.","gpx_match_roads",false,()->{}));
-        menu(extra,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
+        menu(extra,getString(R.string.menu_background_gps),"",this::openBackgroundGpsSettings);
+         menu(extra,getString(R.string.menu_battery),"",this::openBatterySettings);
+         menu(extra,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
     private void showMapStyleMenu(){new RoutixDialogs.Builder(this).setTitle("Fond de carte").setItems(new String[]{"Clair","Sombre"},(d,w)->{prefs.edit().putString("map_appearance",w==0?"light":"dark").putBoolean("auto_night",false).apply();applyMapStyle();}).show();}
     private void offlineMenu(){List<String> labels=new ArrayList<>();labels.add("Carte en ligne");for(FranceOfflineManager.Pack p:FranceOfflineManager.PACKS)labels.add(p.label+(FranceOfflineManager.isInstalled(this,p)?" • installé":" • télécharger"));new RoutixDialogs.Builder(this).setTitle("Cartes hors ligne").setItems(labels.toArray(new String[0]),(d,w)->{if(w==0){prefs.edit().remove("offline_pack").apply();applyMapStyle();return;}FranceOfflineManager.Pack pack=FranceOfflineManager.PACKS.get(w-1);if(FranceOfflineManager.isInstalled(this,pack)){prefs.edit().putString("offline_pack",pack.id).apply();applyMapStyle();toast("Carte hors ligne : "+pack.label);}else try{FranceOfflineManager.download(this,pack);toast("Téléchargement lancé. Sélectionne le pack une fois terminé.");}catch(RuntimeException e){DiagnosticLog.error("offline download",e);toast("Téléchargement indisponible");}}).show();}
     private void updateMenu(){
@@ -352,6 +382,24 @@ public class RoutixActivity extends AppCompatActivity {
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(14),dp(18),dp(14));TextView state=text("Téléchargement…",14,Typeface.BOLD,TEXT);android.widget.ProgressBar bar=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);bar.setMax(100);box.addView(state);LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(8));bp.topMargin=dp(14);box.addView(bar,bp);AlertDialog wait=new RoutixDialogs.Builder(this).setTitle("Installation bêta").setView(box).setNegativeButton("Masquer",null).create();wait.show();RoutixDialogs.style(wait,this);updater.downloadAndInstall(u,new InAppUpdater.Callback(){public void status(String s,int p){state.setText(s);bar.setProgress(p);}public void ready(InAppUpdater.Update ignored){}public void error(String m){if(wait.isShowing())wait.dismiss();new RoutixDialogs.Builder(RoutixActivity.this).setTitle("Téléchargement impossible").setMessage(m).setPositiveButton("OK",null).show();}});
     }
 
+    private void openBackgroundGpsSettings(){
+        new RoutixDialogs.Builder(this).setTitle(R.string.menu_background_gps)
+            .setMessage(R.string.background_gps_explanation)
+            .setNegativeButton(android.R.string.cancel,null)
+            .setPositiveButton(R.string.permission_settings,(d,w)->{
+                Intent i=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:"+getPackageName()));
+                startActivity(i);
+            }).show();
+    }
+    private void openBatterySettings(){
+        new RoutixDialogs.Builder(this).setTitle(R.string.menu_battery)
+            .setMessage(R.string.battery_explanation)
+            .setNegativeButton(android.R.string.cancel,null)
+            .setPositiveButton(R.string.permission_settings,(d,w)->
+                startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)))
+            .show();
+    }
     private void exportDiagnostics(){try{File f=DiagnosticLog.export(this);Intent i=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM,FileProvider.getUriForFile(this,getPackageName()+".files",f)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Rapport Routix"));}catch(Exception e){DiagnosticLog.error("export diagnostic",e);toast("Export impossible");}}
 
     private View colorSettingRow(String title,String key,int def,Runnable changed){
@@ -448,7 +496,46 @@ public class RoutixActivity extends AppCompatActivity {
     }
     private String maneuverGlyph(GuidanceEngine.Maneuver m){if(m==null)return "↑";if(m.direction<0)return "↰";if(m.direction==1)return "↱";if(m.direction==2)return "↶";return "↑";}
 
-    private void drawRecordingTrace(){if(recordingLine==null)return;if(!recording||tracker==null||tracker.points.size()<2){recordingLine.setPoints(Collections.emptyList());if(modern!=null)modern.setRecordingRoute(Collections.emptyList());map.invalidate();return;}List<GeoPoint> pts=new ArrayList<>();int stride=Math.max(1,(int)Math.ceil(tracker.points.size()/(double)MAX_DISPLAY_ROUTE_POINTS));for(int i=0;i<tracker.points.size();i+=stride){RouteStore.Point p=tracker.points.get(i);pts.add(new GeoPoint(p.lat,p.lon));}RouteStore.Point last=tracker.points.get(tracker.points.size()-1);if(pts.isEmpty()||pts.get(pts.size()-1).getLatitude()!=last.lat||pts.get(pts.size()-1).getLongitude()!=last.lon)pts.add(new GeoPoint(last.lat,last.lon));recordingLine.setPoints(offline?pts:Collections.emptyList());recordingLine.getOutlinePaint().setColor(routeColor());recordingLine.getOutlinePaint().setAlpha(128);recordingLine.getOutlinePaint().setStrokeWidth(dp(Math.max(5,prefs.getInt("route_width",10)-2)));if(modern!=null)modern.setRecordingRoute(pts);map.invalidate();}
+    private final List<Polyline> extraRecordingLines=new ArrayList<>();
+    private void drawRecordingTrace(){
+        if(recordingLine==null)return;
+        if(!recording||tracker==null||tracker.points.size()<2){
+            recordingLine.setPoints(Collections.emptyList());
+            for(Polyline line:extraRecordingLines)map.getOverlays().remove(line);
+            extraRecordingLines.clear();
+            if(modern!=null)modern.setRecordingSegments(Collections.emptyList());
+            map.invalidate();return;
+        }
+        List<List<GeoPoint>> segments=new ArrayList<>();
+        List<GeoPoint> active=new ArrayList<>();
+        segments.add(active);
+        List<RouteStore.Point> source=tracker.points;
+        int stride=Math.max(1,(int)Math.ceil(source.size()/(double)MAX_DISPLAY_ROUTE_POINTS));
+        for(int i=0;i<source.size();i++){
+            RouteStore.Point p=source.get(i);
+            if(p.breakBefore&&!active.isEmpty()){active=new ArrayList<>();segments.add(active);}
+            if(i%stride==0||p.breakBefore||i==source.size()-1)
+                active.add(new GeoPoint(p.lat,p.lon));
+        }
+        while(extraRecordingLines.size()<segments.size()-1){
+            Polyline line=new Polyline();
+            line.getOutlinePaint().setStrokeCap(Paint.Cap.ROUND);
+            line.getOutlinePaint().setStrokeJoin(Paint.Join.ROUND);
+            extraRecordingLines.add(line);map.getOverlays().add(line);
+        }
+        while(extraRecordingLines.size()>segments.size()-1)
+            map.getOverlays().remove(extraRecordingLines.remove(extraRecordingLines.size()-1));
+        int color=recordingColor(), width=dp(Math.max(5,prefs.getInt("route_width",10)-2));
+        for(int i=0;i<segments.size();i++){
+            Polyline line=i==0?recordingLine:extraRecordingLines.get(i-1);
+            line.setPoints(offline?segments.get(i):Collections.emptyList());
+            line.getOutlinePaint().setColor(color);line.getOutlinePaint().setAlpha(180);
+            line.getOutlinePaint().setStrokeWidth(width);
+        }
+        if(modern!=null)modern.setRecordingSegments(segments);
+        map.invalidate();
+    }
+
     private void drawRemaining(GuidanceEngine.State state){if(!guiding||guidingRoute==null||!"map".equals(selectedTab))return;boolean erase=prefs.getBoolean("erase_passed",true);int start=!erase||state==null?0:Math.max(0,Math.min(guidingRoute.points.size()-2,state.nearestIndex));int from=start+(erase&&state!=null?1:0);List<GeoPoint> pts=new ArrayList<>();if(state!=null&&erase&&Double.isFinite(state.position.lat)&&Double.isFinite(state.position.lon))pts.add(new GeoPoint(state.position.lat,state.position.lon));int available=Math.max(0,guidingRoute.points.size()-from),slots=Math.max(2,MAX_DISPLAY_ROUTE_POINTS-pts.size()),stride=Math.max(1,(int)Math.ceil(available/(double)slots));for(int i=from;i<guidingRoute.points.size();i+=stride){RouteStore.Point p=guidingRoute.points.get(i);pts.add(new GeoPoint(p.lat,p.lon));}if(from<guidingRoute.points.size()){RouteStore.Point last=guidingRoute.points.get(guidingRoute.points.size()-1);if(pts.isEmpty()||pts.get(pts.size()-1).getLatitude()!=last.lat||pts.get(pts.size()-1).getLongitude()!=last.lon)pts.add(new GeoPoint(last.lat,last.lon));}if(modern!=null){modern.setRoute(pts);modern.setEvents(guidingRoute.events);}remainingLine.setPoints(offline?pts:Collections.emptyList());remainingLine.getOutlinePaint().setColor(guidanceColor());remainingLine.getOutlinePaint().setStrokeWidth(dp(prefs.getInt("route_width",10)));String traceStyle=prefs.getString("guidance_trace_style","arrows");remainingLine.getOutlinePaint().setPathEffect("dashed".equals(traceStyle)?new android.graphics.DashPathEffect(new float[]{dp(14),dp(10)},0):null);if(offline&&"arrows".equals(traceStyle))routeArrows.setPoints(pts);else routeArrows.setPoints(new ArrayList<>());List<GeoPoint> ahead=firstMeters(pts,50);aheadLine.setPoints(offline?ahead:Collections.emptyList());aheadLine.getOutlinePaint().setColor(aheadColor());aheadLine.getOutlinePaint().setStrokeWidth(dp(prefs.getInt("route_width",10)+2));aheadLine.getOutlinePaint().setPathEffect(null);if(modern!=null)modern.setAheadRoute(ahead);map.invalidate();}
     private void updateApproach(Location l){if(!approachingStart||approachRoute==null||!approachRoute.usable())return;approachIndex=DepartureNavigation.advanceIndex(approachRoute.points,approachIndex,l);List<GeoPoint> pts=DepartureNavigation.remaining(approachRoute,approachIndex,l);
         if(modern!=null)modern.setApproach(pts);approachLine.setPoints(offline?pts:Collections.emptyList());approachLine.getOutlinePaint().setColor(TEAL);approachLine.getOutlinePaint().setStrokeWidth(dp(8));if(offline)approachArrows.setPoints(pts);else approachArrows.setPoints(Collections.emptyList());map.invalidate();}
@@ -488,7 +575,11 @@ public class RoutixActivity extends AppCompatActivity {
     };
     private void syncTracking(){if(tracker==null||!tracker.ready||isDestroyed())return;boolean changed=recording!=tracker.recording||paused!=tracker.paused||guiding!=(tracker.guidance!=null);recording=tracker.recording;paused=tracker.paused;recordingStarted=tracker.started;recordedDistance=tracker.distance;guiding=tracker.guidance!=null;guidingRoute=tracker.route;guidance=tracker.guidance;
         // Copy only the counters into the existing recording UI; service owns the point lists.
-        if(recordDistance!=null)recordDistance.setText(formatDistance(recordedDistance)+"\nDISTANCE");if(recordPoints!=null)recordPoints.setText(tracker.points.size()+"\nPOINTS");if(recordEvents!=null)recordEvents.setText(tracker.events.size()+"\nREPÈRES");
+        if(recordDistance!=null)recordDistance.setText(formatDistance(recordedDistance)+"\nDISTANCE");
+        RecordingSummary.Snapshot session=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
+        if(recordElapsed!=null)recordElapsed.setText(formatDuration(session.elapsedMs)+"\n"+getString(R.string.metric_duration));
+        if(recordAverage!=null)recordAverage.setText(String.format(Locale.getDefault(),"%.1f km/h",session.averageKmh)+"\n"+getString(R.string.metric_average));
+        updateGpsStatus();if(recordPoints!=null)recordPoints.setText(tracker.points.size()+"\nPOINTS");if(recordEvents!=null)recordEvents.setText(tracker.events.size()+"\nREPÈRES");
         if(changed)showTab(selectedTab,false);if(recordMain!=null)recordMain.setEnabled(!tracker.saving);drawRecordingTrace();if(tracker.location!=null)onLocationChanged(tracker.location);else if(guiding)drawRemaining(tracker.guidanceState);applyRuntimePrefs();
         if(!recoveryOffered){recoveryOffered=true;if(!recording&&store.hasDraft())offerDraftRecovery();}
     }
@@ -529,6 +620,19 @@ public class RoutixActivity extends AppCompatActivity {
     private static String monthLabel(String month){try{return new SimpleDateFormat("MMMM yyyy",Locale.getDefault()).format(new SimpleDateFormat("yyyy-MM",Locale.FRANCE).parse(month));}catch(Exception e){return month;}}
 
     private void rebuildChrome(){if(root==null)return;if(topBar!=null)root.removeView(topBar);if(dock!=null)root.removeView(dock);topBar=buildTopBar();dock=buildDock();root.addView(topBar);root.addView(dock);topBar.bringToFront();contentHost.bringToFront();dock.bringToFront();updateDock();positionChrome();applyRuntimePrefs();}
+    private void updateGpsStatus(){
+        if(gpsStatus==null||tracker==null)return;
+        Location current=tracker.location;
+        long age=current==null?Long.MAX_VALUE:
+            (android.os.SystemClock.elapsedRealtimeNanos()-current.getElapsedRealtimeNanos())/1_000_000L;
+        if(age<0||age>20_000||current==null){
+            gpsStatus.setText(getString(R.string.gps_missing));gpsStatus.setTextColor(PEACH);
+        }else if(current.getAccuracy()>35){
+            gpsStatus.setText(getString(R.string.gps_weak));gpsStatus.setTextColor(PEACH);
+        }else{
+            gpsStatus.setText(getString(R.string.gps_ok));gpsStatus.setTextColor(GREEN);
+        }
+    }
     private void applyRuntimePrefs(){boolean saver=prefs.getBoolean("battery_saver",true);if((recording||guiding)&&!saver&&prefs.getBoolean("keep_screen",false))getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(mapLogo!=null)mapLogo.setVisibility("map".equals(selectedTab)&&false?View.VISIBLE:View.GONE);if(headerSpeed!=null)headerSpeed.setVisibility(prefs.getBoolean("show_speed",true)?View.VISIBLE:View.GONE);}
     private void positionChrome(){if(root==null||topBar==null||dock==null||contentHost==null)return;boolean compact=guiding&&"map".equals(selectedTab);int top=systemTop+dp(compact?4:8),bottom=systemBottom+dp(compact?4:8),topH=dp(compact?50:64),dockH=dp(compact?50:70);FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);hp.setMargins(dp(10),top,dp(10),0);topBar.setLayoutParams(hp);FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);dpv.setMargins(dp(10),0,dp(10),bottom);dock.setLayoutParams(dpv);if(modern!=null)modern.inset(top+topH);if(mapLogo!=null){FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(dp(52),dp(52),Gravity.TOP|Gravity.START);ml.setMargins(dp(14),top+topH+dp(10),0,0);mapLogo.setLayoutParams(ml);}if("map".equals(selectedTab)){FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);cp.setMargins(dp(compact?6:10),0,dp(compact?6:10),bottom+dockH+dp(compact?5:8));contentHost.setLayoutParams(cp);}else{FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));contentHost.setLayoutParams(cp);}}
 
@@ -537,6 +641,16 @@ public class RoutixActivity extends AppCompatActivity {
     @Override protected void onResume(){super.onResume();visible=true;if(map!=null&&offline)map.onResume();if(modern!=null)modern.onResume();if(tracker!=null)tracker.observe(this::syncTracking);}
     @Override protected void onPause(){visible=false;if(tracker!=null)tracker.observe(null);if(modern!=null)modern.onPause();if(map!=null)map.onPause();super.onPause();}
     @Override protected void onStop(){visible=false;if(tracker!=null)tracker.observe(null);if(bound){unbindService(connection);bound=false;tracker=null;}if(modern!=null)modern.onStop();super.onStop();}
+    @Override @Deprecated public void onBackPressed(){
+        if(!"map".equals(selectedTab)){
+            String previous="detail".equals(selectedTab)?"routes":
+                ("hours".equals(selectedTab)||"settings".equals(selectedTab)||"stats".equals(selectedTab)||
+                 "gpxlab".equals(selectedTab)||"planlab".equals(selectedTab))?"more":"map";
+            showTab(previous,true);
+            return;
+        }
+        super.onBackPressed();
+    }
     @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("workspace",selectedTab);if(detailFile!=null)out.putString("detail_file",detailFile.getName());if(modern!=null)modern.onSaveInstanceState(out);}
     @Override public void onLowMemory(){super.onLowMemory();if(modern!=null)modern.onLowMemory();if(map!=null)map.getTileProvider().clearTileCache();}
     @Override protected void onDestroy(){guidanceSession++;if(modern!=null)modern.onDestroy();if(map!=null)map.onDetach();super.onDestroy();}
