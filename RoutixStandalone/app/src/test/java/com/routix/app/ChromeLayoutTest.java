@@ -35,7 +35,7 @@ public class ChromeLayoutTest {
             ((org.osmdroid.views.MapView)field(activity,"map")).setUseDataConnection(false);
             FrameLayout root=(FrameLayout)field(activity,"root");
             set(activity,"systemTop",28);set(activity,"systemBottom",24);
-            for(int[] size:new int[][]{{320,640},{390,844},{430,932}}){
+            for(int[] size:new int[][]{{320,640},{390,844},{430,932},{640,360}}){
                 root.measure(View.MeasureSpec.makeMeasureSpec(size[0],View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(size[1],View.MeasureSpec.EXACTLY));root.layout(0,0,size[0],size[1]);invoke(activity,"positionChrome");
                 root.measure(View.MeasureSpec.makeMeasureSpec(size[0],View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(size[1],View.MeasureSpec.EXACTLY));root.layout(0,0,size[0],size[1]);
                 View header=(View)field(activity,"topBar"),dock=(View)field(activity,"dock"),content=(View)field(activity,"contentHost");

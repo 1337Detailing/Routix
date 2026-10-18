@@ -641,6 +641,16 @@ public class RoutixActivity extends AppCompatActivity {
     @Override protected void onResume(){super.onResume();visible=true;if(map!=null&&offline)map.onResume();if(modern!=null)modern.onResume();if(tracker!=null)tracker.observe(this::syncTracking);}
     @Override protected void onPause(){visible=false;if(tracker!=null)tracker.observe(null);if(modern!=null)modern.onPause();if(map!=null)map.onPause();super.onPause();}
     @Override protected void onStop(){visible=false;if(tracker!=null)tracker.observe(null);if(bound){unbindService(connection);bound=false;tracker=null;}if(modern!=null)modern.onStop();super.onStop();}
+    @Override @Deprecated public void onBackPressed(){
+        if(!"map".equals(selectedTab)){
+            String previous="detail".equals(selectedTab)?"routes":
+                ("hours".equals(selectedTab)||"settings".equals(selectedTab)||"stats".equals(selectedTab)||
+                 "gpxlab".equals(selectedTab)||"planlab".equals(selectedTab))?"more":"map";
+            showTab(previous,true);
+            return;
+        }
+        super.onBackPressed();
+    }
     @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("workspace",selectedTab);if(detailFile!=null)out.putString("detail_file",detailFile.getName());if(modern!=null)modern.onSaveInstanceState(out);}
     @Override public void onLowMemory(){super.onLowMemory();if(modern!=null)modern.onLowMemory();if(map!=null)map.getTileProvider().clearTileCache();}
     @Override protected void onDestroy(){guidanceSession++;if(modern!=null)modern.onDestroy();if(map!=null)map.onDetach();super.onDestroy();}
