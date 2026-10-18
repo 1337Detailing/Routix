@@ -257,7 +257,7 @@ public class RoutixActivity extends AppCompatActivity {
         menu(page,"Tous les outils","Favoris, duplication, amélioration, GPX Lab et suppression",()->routeMenu(file,route));scroll.addView(page);return scroll;
     }
 
-    private void routeMenu(File f,RouteStore.Summary s){String[] x={store.isFavorite(f)?"Retirer des favoris":"Ajouter aux favoris","Déplacer dans un dossier","Renommer","Dupliquer","Améliorer la tournée","Partager le GPX","Générer le plan","Avancé : GPX Lab","Supprimer"};new RoutixDialogs.Builder(this).setTitle(store.displayName(f)).setMessage(formatDistance(s.distanceM)+" • "+formatDuration(s.durationMs)+" • "+s.points.size()+" points").setItems(x,(d,w)->{if(w==0){store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);}else if(w==1)moveRouteDialog(f);else if(w==2)rename(f);else if(w==3){File copy=store.duplicate(f);if(copy!=null)folderStore.move(copy,folderStore.folderOf(f));showTab("routes",false);}else if(w==4)improveRoute(f,s);else if(w==5)share(f);else if(w==6)PrintablePlan.open(this,s,store.displayName(f));else if(w==7){prefs.edit().putString("gpx_lab_file",f.getName()).apply();showTab("gpxlab",true);}else confirmDelete(f);}).show();}
+    private void routeMenu(File f,RouteStore.Summary s){String[] x={store.isFavorite(f)?"Retirer des favoris":"Ajouter aux favoris","Déplacer dans un dossier","Renommer","Dupliquer","Améliorer la tournée","Partager le GPX","Générer le plan","Avancé : GPX Lab",getString(R.string.export_kml),getString(R.string.export_csv),"Supprimer"};new RoutixDialogs.Builder(this).setTitle(store.displayName(f)).setMessage(formatDistance(s.distanceM)+" • "+formatDuration(s.durationMs)+" • "+s.points.size()+" points").setItems(x,(d,w)->{if(w==0){store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);}else if(w==1)moveRouteDialog(f);else if(w==2)rename(f);else if(w==3){File copy=store.duplicate(f);if(copy!=null)folderStore.move(copy,folderStore.folderOf(f));showTab("routes",false);}else if(w==4)improveRoute(f,s);else if(w==5)share(f);else if(w==6)PrintablePlan.open(this,s,store.displayName(f));else if(w==7){prefs.edit().putString("gpx_lab_file",f.getName()).apply();showTab("gpxlab",true);}else if(w==8)shareConverted(f,true);else if(w==9)shareConverted(f,false);else confirmDelete(f);}).show();}
     private void improveRoute(File source,RouteStore.Summary original){
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(18),dp(18),dp(18),dp(18));TextView title=text("Améliorer la tournée",22,Typeface.BOLD,TEXT),status=text("Préparation…",13,Typeface.NORMAL,MUTED);android.widget.ProgressBar progress=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);panel.addView(title);panel.addView(status);LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(8));pp.topMargin=dp(14);panel.addView(progress,pp);TextView note=text("L’original ne sera jamais modifié. OSM + OSRM sont utilisés uniquement après cette action.",11,Typeface.NORMAL,MUTED);note.setPadding(0,dp(12),0,0);panel.addView(note);
         AlertDialog wait=new RoutixDialogs.Builder(this).setView(panel).setNegativeButton("Annuler",(d,w)->{}).create();wait.setCanceledOnTouchOutside(false);wait.show();RoutixDialogs.style(wait,this);
@@ -273,6 +273,27 @@ public class RoutixActivity extends AppCompatActivity {
     private void moveRouteDialog(File f){List<String> folders=folderStore.folders();String[] labels=new String[folders.size()+1];labels[0]="Sans dossier";for(int i=0;i<folders.size();i++)labels[i+1]=""+folders.get(i);new RoutixDialogs.Builder(this).setTitle("Déplacer "+store.displayName(f)).setItems(labels,(d,w)->{folderStore.move(f,w==0?RouteFolderStore.ROOT:folders.get(w-1));showTab("routes",false);}).show();}
     private void rename(File f){EditText e=new EditText(this);e.setText(store.displayName(f));e.setSingleLine(true);new RoutixDialogs.Builder(this).setTitle("Nom de la tournée").setMessage("Le fichier GPX sera renommé lui aussi.").setView(e).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer",(d,w)->{String old=f.getName();File renamed=store.rename(f,e.getText().toString());if(renamed!=null)folderStore.migrateFileName(old,renamed.getName());toast(renamed==null?"Renommage impossible":"Tournée renommée");showTab("routes",false);}).show();}
     private void confirmDelete(File f){new RoutixDialogs.Builder(this).setTitle("Supprimer cette tournée ?").setMessage("Le fichier GPX et sa copie Routix seront supprimés.").setNegativeButton("Annuler",null).setPositiveButton("Supprimer",(a,b)->{folderStore.forget(f);boolean ok=store.delete(f);toast(ok?"Tournée supprimée":"Suppression impossible");showTab("routes",false);}).show();}
+    private void shareConverted(File file,boolean kml){
+        new Thread(()->{
+            try{
+                File output=RouteExporter.write(this,store.parse(file),store.displayName(file),kml);
+                runOnUiThread(()->{
+                    if(isDestroyed())return;
+                    try{
+                        Uri uri=FileProvider.getUriForFile(this,getPackageName()+".files",output);
+                        Intent intent=new Intent(Intent.ACTION_SEND);
+                        intent.setType(kml?"application/vnd.google-earth.kml+xml":"text/csv");
+                        intent.putExtra(Intent.EXTRA_STREAM,uri);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(intent,getString(R.string.share_export)));
+                    }catch(RuntimeException e){DiagnosticLog.error("share export",e);toast(getString(R.string.export_error));}
+                });
+            }catch(Exception e){
+                DiagnosticLog.error("route export",e);
+                runOnUiThread(()->{if(!isDestroyed())toast(getString(R.string.export_error));});
+            }
+        },"route-export").start();
+    }
     private void share(File f){try{Uri u=FileProvider.getUriForFile(this,getPackageName()+".files",f);Intent i=new Intent(Intent.ACTION_SEND);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_STREAM,u);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Partager la tournée"));}catch(Exception e){toast("Partage impossible");}}
 
     private View hoursPage(){

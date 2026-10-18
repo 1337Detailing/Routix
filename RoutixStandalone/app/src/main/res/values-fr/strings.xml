@@ -44,4 +44,8 @@
     <string name="gps_missing">GPS perdu</string>
     <string name="gps_weak">GPS faible</string>
     <string name="gps_ok">GPS bon</string>
+    <string name="export_kml">Exporter KML</string>
+    <string name="export_csv">Exporter CSV</string>
+    <string name="share_export">Partager le parcours</string>
+    <string name="export_error">Export impossible</string>
 </resources>
