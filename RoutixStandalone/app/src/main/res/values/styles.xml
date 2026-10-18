@@ -12,4 +12,5 @@
         <item name="android:textColorPrimary">@color/routix_text</item>
         <item name="android:windowDisablePreview">true</item>
     </style>
+    <style name="Theme.Routix.Splash" parent="Theme.Routix" />
 </resources>

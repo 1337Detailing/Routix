@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Routix</string>
+    <string name="permission_location_title">Location</string>
+    <string name="permission_location_explanation">Allow precise location to record and follow routes.</string>
+    <string name="permission_location_status">Choose While using the app and enable Precise location.</string>
+    <string name="permission_status_settings">Enable precise location in Android settings.</string>
+    <string name="permission_continue">Allow location</string>
+    <string name="permission_settings">Open settings</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_record">Record</string>
+    <string name="tab_routes">Routes</string>
+    <string name="tab_more">More</string>
+</resources>

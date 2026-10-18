@@ -140,7 +140,7 @@ public class RoutixActivity extends AppCompatActivity {
         return actions;
     }
 
-    private View buildDock(){LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));row.setBackground(surface(SURFACE,24));row.setElevation(dp(2));tab(row,"⌖","Carte","map");tab(row,"●","Enregistrer","record");tab(row,"≡","Tournées","routes");tab(row,"•••","Plus","more");return row;}
+    private View buildDock(){LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));row.setBackground(surface(SURFACE,24));row.setElevation(dp(2));tab(row,"⌖",getString(R.string.tab_map),"map");tab(row,"●",getString(R.string.tab_record),"record");tab(row,"≡",getString(R.string.tab_routes),"routes");tab(row,"•••",getString(R.string.tab_more),"more");return row;}
     private void tab(LinearLayout row,String glyph,String label,String key){TextView t=text(label,12,Typeface.BOLD,MUTED);TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);t.setTag(key);t.setContentDescription(label);t.setOnClickListener(v->showTab(key,true));row.addView(t,new LinearLayout.LayoutParams(0,-1,1));}
 
     private void showTab(String key,boolean animate){
