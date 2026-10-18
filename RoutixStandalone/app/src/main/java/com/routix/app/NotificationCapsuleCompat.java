@@ -6,19 +6,23 @@ import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import java.util.ArrayList;
 
-/** Best-effort OriginOS 6 Super Island payload. Unknown extras are ignored on standard Android. */
-final class OriginIslandCompat {
+/** Optional notification enhancements when a platform exposes the required API. */
+final class NotificationCapsuleCompat {
     private static final String SCENE="TRAIN";
-    private OriginIslandCompat(){}
+    private NotificationCapsuleCompat(){}
 
-    static boolean isVivo(){
-        String b=android.os.Build.BRAND==null?"":android.os.Build.BRAND;
-        String m=android.os.Build.MANUFACTURER==null?"":android.os.Build.MANUFACTURER;
-        return b.toLowerCase(java.util.Locale.ROOT).contains("vivo")||b.toLowerCase(java.util.Locale.ROOT).contains("iqoo")||m.toLowerCase(java.util.Locale.ROOT).contains("vivo");
+    static boolean supportsScene() {
+        try {
+            NotificationManager.class.getMethod("setSuperXInfosSceneList",
+                java.util.List.class,java.util.List.class,java.util.List.class,java.util.List.class);
+            return true;
+        } catch (NoSuchMethodException | SecurityException ignored) {
+            return false;
+        }
     }
 
     static void registerScene(Context context){
-        if(!isVivo())return;
+        if(!supportsScene())return;
         try{
             NotificationManager nm=(NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
             java.lang.reflect.Method method=NotificationManager.class.getMethod("setSuperXInfosSceneList",java.util.List.class,java.util.List.class,java.util.List.class,java.util.List.class);

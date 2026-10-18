@@ -28,13 +28,13 @@ public class ThemeScreensTest {
     }
     @Test public void populatedWorkspacesRenderInEveryFlavor()throws Exception{
         SharedPreferences prefs=RuntimeEnvironment.getApplication().getSharedPreferences("routix",0);
-        for(String flavor:new String[]{"mocha","macchiato","frappe","latte"}){
+        for(String flavor:new String[]{"sand"}){
             prefs.edit().clear().putString("theme_flavor",flavor).putBoolean("animations",false).commit();
             try(ActivityController<RoutixActivity> controller=Robolectric.buildActivity(RoutixActivity.class).create()){
                 RoutixActivity a=controller.get();RouteStore store=(RouteStore)get(a,"store");File route=new File(store.routesDir(),"ui-fixture.gpx");
                 String xml="<gpx version=\"1.1\"><trk><name>Tournée du centre</name><trkseg><trkpt lat=\"48.898\" lon=\"7.962\"/><trkpt lat=\"48.899\" lon=\"7.963\"/><trkpt lat=\"48.899\" lon=\"7.964\"/></trkseg></trk></gpx>";
                 try(FileOutputStream out=new FileOutputStream(route)){out.write(xml.getBytes(StandardCharsets.UTF_8));}
-                RouteFolderStore folders=(RouteFolderStore)get(a,"folderStore");folders.create("Soufflenheim");folders.move(route,"Soufflenheim");folders.setExpanded("Soufflenheim",true);
+                RouteFolderStore folders=(RouteFolderStore)get(a,"folderStore");folders.create("Exemple");folders.move(route,"Exemple");folders.setExpanded("Exemple",true);
                 set(a,"detailFile",route);set(a,"systemTop",24);set(a,"systemBottom",24);
                 FrameLayout root=(FrameLayout)get(a,"root");Method show=RoutixActivity.class.getDeclaredMethod("showTab",String.class,boolean.class);show.setAccessible(true);
                 for(String page:new String[]{"record","routes","detail","hours","settings","more","gpxlab"}){
@@ -48,7 +48,7 @@ public class ThemeScreensTest {
     }
     @Test public void permissionsScreenRendersInLightAndDark()throws Exception{
         SharedPreferences prefs=RuntimeEnvironment.getApplication().getSharedPreferences("routix",0);
-        for(String flavor:new String[]{"mocha","latte"}){prefs.edit().clear().putString("theme_flavor",flavor).commit();try(ActivityController<OnboardingActivity> c=Robolectric.buildActivity(OnboardingActivity.class).create()){render(c.get().findViewById(android.R.id.content),flavor+"-permissions");}}
+        for(String flavor:new String[]{"sand"}){prefs.edit().clear().putString("theme_flavor",flavor).commit();try(ActivityController<OnboardingActivity> c=Robolectric.buildActivity(OnboardingActivity.class).create()){render(c.get().findViewById(android.R.id.content),flavor+"-permissions");}}
         prefs.edit().clear().commit();
     }
 }

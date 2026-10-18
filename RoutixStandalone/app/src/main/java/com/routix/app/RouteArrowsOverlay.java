@@ -16,13 +16,13 @@ import java.util.Map;
 
 /** Screen-spaced chevrons rotate with the map and always follow traversal order. */
 final class RouteArrowsOverlay extends Overlay {
-    private CatppuccinTheme.Tokens theme;
+    private RoutixTheme.Tokens theme;
     private List<GeoPoint> points=Collections.emptyList();
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     void setPoints(List<GeoPoint> points){this.points=points;}
     @Override public void draw(Canvas canvas,MapView map,boolean shadow){
         if(shadow||points.size()<2)return;
-        if(theme==null)theme=CatppuccinTheme.from(map.getContext());
+        if(theme==null)theme=RoutixTheme.from(map.getContext());
         float density=map.getResources().getDisplayMetrics().density;
         double spacing=42*density,next=20*density;
         Point a=new Point(),b=new Point();map.getProjection().toPixels(points.get(0),a);

@@ -1,15 +1,16 @@
 <resources>
     <style name="Theme.Routix" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:fontFamily">sans-serif</item><item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">@color/routix_base</item><item name="android:navigationBarColor">@color/routix_base</item>
-        <item name="android:windowActionModeOverlay">true</item><item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">@color/routix_base</item><item name="android:colorAccent">@color/routix_accent</item><item name="colorAccent">@color/routix_accent</item>
-        <item name="android:textColorPrimary">@color/routix_text</item><item name="android:windowDisablePreview">true</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/routix_base</item>
+        <item name="android:navigationBarColor">@color/routix_base</item>
+        <item name="android:windowBackground">@color/routix_base</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:colorAccent">@color/routix_accent</item>
+        <item name="colorAccent">@color/routix_accent</item>
+        <item name="android:textColorPrimary">@color/routix_text</item>
+        <item name="android:windowDisablePreview">true</item>
     </style>
-    <style name="Theme.Routix.Latte" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:fontFamily">sans-serif</item><item name="android:windowLightStatusBar">true</item><item name="android:windowLightNavigationBar">true</item>
-        <item name="android:statusBarColor">@color/routix_latte_base</item><item name="android:navigationBarColor">@color/routix_latte_base</item>
-        <item name="android:windowBackground">@color/routix_latte_base</item><item name="android:colorAccent">@color/routix_latte_accent</item><item name="colorAccent">@color/routix_latte_accent</item>
-        <item name="android:textColorPrimary">@color/routix_latte_text</item><item name="android:windowDisablePreview">true</item>
-    </style>
+    <style name="Theme.Routix.Splash" parent="Theme.Routix" />
 </resources>

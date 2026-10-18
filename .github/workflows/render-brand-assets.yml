@@ -1,0 +1,40 @@
+name: Render Routix Brand Assets
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - feat/cloudix-identity-sand
+    paths:
+      - 'docs/assets/logo.svg'
+      - 'site/assets/logo.svg'
+      - 'docs/assets/og-cover.svg'
+      - 'site/assets/og-cover.svg'
+      - '.github/workflows/render-brand-assets.yml'
+      - '.github/scripts/render-brand-assets.py'
+
+permissions:
+  contents: write
+
+jobs:
+  raster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install SVG renderer
+        run: python -m pip install --disable-pip-version-check 'CairoSVG==2.8.2'
+      - name: Render every density
+        run: python .github/scripts/render-brand-assets.py
+      - name: Commit generated PNGs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/*.png site/assets/*.png branding/*.png RoutixStandalone/app/src/main/res/mipmap-*
+          if ! git diff --cached --quiet; then
+            git commit -m "assets: render Routix launcher, store and web PNGs"
+            git push
+          fi

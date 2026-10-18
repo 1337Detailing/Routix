@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">Routix</string>
+    <string name="permission_location_title">Localisation</string>
+    <string name="permission_location_explanation">Autorise ta position précise pour enregistrer et suivre tes parcours.</string>
+    <string name="permission_location_status">Choisis « Pendant l’utilisation » et active Position précise.</string>
+    <string name="permission_status_settings">Active la localisation précise dans les réglages Android.</string>
+    <string name="permission_continue">Autoriser</string>
+    <string name="permission_settings">Ouvrir les réglages</string>
+    <string name="tab_map">Carte</string>
+    <string name="tab_record">Enregistrer</string>
+    <string name="tab_routes">Tournées</string>
+    <string name="tab_more">Plus</string>
+    <string name="screen_record">Enregistrer</string>
+    <string name="screen_hours">Heures</string>
+    <string name="screen_gpx">Outils GPX</string>
+    <string name="screen_more">Plus</string>
+    <string name="screen_stats">Statistiques</string>
+    <string name="screen_settings">Réglages</string>
+    <string name="screen_plan">Plan vers parcours</string>
+    <string name="menu_hours">Heures travaillées</string>
+    <string name="menu_offline">Cartes hors ligne</string>
+    <string name="menu_updates">Mises à jour</string>
+    <string name="menu_diagnostics">Exporter le diagnostic</string>
+    <string name="menu_plan_beta">Plan vers parcours (bêta)</string>
+</resources>

@@ -7,6 +7,11 @@ on:
       - 'docs/**'
       - 'site/**'
       - '.github/workflows/verify-routix-site.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'site/**'
+      - '.github/workflows/verify-routix-site.yml'
   workflow_dispatch:
 
 permissions:
@@ -47,7 +52,7 @@ jobs:
               for link in parser.anchors:
                   if link.startswith('#') and link != '#':
                       assert link[1:] in parser.ids, (folder, link)
-              for file in ('styles.css', 'app.js', 'assets/favicon.svg', 'assets/og-cover.svg'):
+              for file in ('styles.css', 'app.js', 'manifest.webmanifest', 'assets/favicon.svg', 'assets/logo.svg', 'assets/apple-touch-icon.png', 'assets/og-cover.svg', 'assets/og-cover.png', 'assets/icon-192.png', 'assets/icon-512.png'):
                   assert (root / file).is_file(), (folder, file)
               for file in ('assets/favicon.svg', 'assets/og-cover.svg'):
                   ET.parse(root / file)
