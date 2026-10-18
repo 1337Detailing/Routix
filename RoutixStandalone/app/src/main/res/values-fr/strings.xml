@@ -39,4 +39,9 @@
     <string name="background_gps_explanation">Autorise la localisation en arrière-plan dans Android pour reprendre après un redémarrage. Android peut encore limiter cette reprise.</string>
     <string name="menu_battery">Optimisation batterie</string>
     <string name="battery_explanation">Pour éviter les interruptions, autorise Routix à fonctionner sans restriction de batterie.</string>
+    <string name="metric_duration">Durée</string>
+    <string name="metric_average">Vitesse moyenne</string>
+    <string name="gps_missing">GPS perdu</string>
+    <string name="gps_weak">GPS faible</string>
+    <string name="gps_ok">GPS bon</string>
 </resources>

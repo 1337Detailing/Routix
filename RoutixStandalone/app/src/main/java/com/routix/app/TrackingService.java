@@ -38,6 +38,7 @@ public final class TrackingService extends Service implements LocationListener {
     private final java.util.concurrent.atomic.AtomicBoolean draftPending=new java.util.concurrent.atomic.AtomicBoolean();
     private final RouteAwareAnalyzer routeAware=new RouteAwareAnalyzer();private RoadContextProvider roadContext;private StreetPassageStore streetPassages;
 
+    private final Runnable signalHealth=new Runnable(){@Override public void run(){if(!closed){if(recording||guidance!=null)publish();main.postDelayed(this,10000);}}};
     private final Runnable draft=new Runnable(){public void run(){
         if(recording)saveDraft();
         if(!closed)main.postDelayed(this,prefs!=null&&prefs.getBoolean("battery_saver",true)?30000:15000);
@@ -63,7 +64,7 @@ public final class TrackingService extends Service implements LocationListener {
                 if(validGuidance){guidanceStartedAt=gStarted>0?gStarted:System.currentTimeMillis();guidanceTravelDistance=Math.max(0,gDistance);guidanceReverseAdded=Math.max(0,gReverse);guidanceTwoSidesAdded=Math.max(0,gTwo);installGuidance(recovered,progress);}
                 ready=true;if(deferredAction!=null){String action=deferredAction;deferredAction=null;applyNotificationAction(action);}if(recording||guidance!=null){if(visible&&!foreground)activate();else if(visible||foreground)subscribe();}else idle();publish();if(visible&&!subscribed)subscribe();});
         }catch(Exception ex){DiagnosticLog.error("session recovery",ex);main.post(()->{if(closed)return;ready=true;if(foreground&&!recording&&guidance==null)idle();publish();if(visible&&!subscribed)subscribe();});}});
-        main.postDelayed(draft,30000);
+        main.postDelayed(draft,30000);main.postDelayed(signalHealth,10000);
     }
 
     @Override public IBinder onBind(Intent intent){return new LocalBinder();}

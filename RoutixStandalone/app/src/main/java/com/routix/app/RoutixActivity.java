@@ -70,7 +70,7 @@ public class RoutixActivity extends AppCompatActivity {
 
     private SharedPreferences prefs; private RouteStore store; private RouteFolderStore folderStore; private WorkHoursStore hoursStore; private Location lastLocation; private final RoadRestrictionProvider roadRestrictions=new RoadRestrictionProvider();
     private ModernMapController modern; private TrackingService tracker; private boolean bound,visible,headingUp=true,offline; private Bundle mapState; private boolean recoveryOffered;
-    private FrameLayout root; private MapView map; private View topBar,dock,recordSheet; private LinearLayout contentHost; private CompactSpeedometer headerSpeed; private TextView speedLimit; private ImageView mapLogo;
+    private FrameLayout root; private MapView map; private View topBar,dock,recordSheet; private LinearLayout contentHost; private CompactSpeedometer headerSpeed; private TextView speedLimit,gpsStatus,recordElapsed,recordAverage; private ImageView mapLogo;
     private Polyline remainingLine,aheadLine,approachLine,recordingLine; private RouteArrowsOverlay routeArrows,approachArrows; private int systemTop,systemBottom; private String selectedTab="map"; private int accent;
     private boolean recording,paused,guiding,guidanceCameraFollow=true; private long recordingStarted,guidanceSession,lastOfflineCameraMs; private double recordedDistance;
     private DepartureNavigation.Result approachRoute; private int approachIndex; private boolean approachingStart,approachPending,finishSummaryShown; private long approachGeneration; private String approachRouteName;
@@ -127,7 +127,7 @@ public class RoutixActivity extends AppCompatActivity {
     private View buildTopBar(){
         LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(5),dp(8),dp(5));bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(2));ImageView brandIcon=new ImageView(this);brandIcon.setImageResource(R.drawable.ic_routix);brandIcon.setContentDescription(getString(R.string.app_name));LinearLayout.LayoutParams brandLp=new LinearLayout.LayoutParams(dp(38),dp(38));brandLp.rightMargin=dp(5);bar.addView(brandIcon,brandLp);
         headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(116),dp(50)));speedLimit=text("—",15,Typeface.BOLD,TEXT);speedLimit.setGravity(Gravity.CENTER);speedLimit.setContentDescription("Limitation de vitesse OSM");speedLimit.setBackground(surface(SURFACE2,99));LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(dp(48),dp(42));sl.leftMargin=dp(4);bar.addView(speedLimit,sl);
-        TextView status=text("GPS",11f,Typeface.BOLD,MUTED);status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
+        gpsStatus=text("GPS",11f,Typeface.BOLD,MUTED);TextView status=gpsStatus;status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
         LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.width=0;bar.addView(status,statusLp);
         return bar;
     }
@@ -170,6 +170,13 @@ public class RoutixActivity extends AppCompatActivity {
 
     private View recordPage(){
         ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_record),"");recordStatus=text(recording?(paused?"EN PAUSE":"ENREGISTREMENT ACTIF"):"PRÊT",13,Typeface.BOLD,recording?GREEN:MUTED);p.addView(recordStatus);LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(12),0,dp(12));recordDistance=metric(formatDistance(recordedDistance),"DISTANCE");recordPoints=metric(String.valueOf(tracker==null?0:tracker.points.size()),"POINTS");recordEvents=metric(String.valueOf(tracker==null?0:tracker.events.size()),"REPÈRES");stats.addView(recordDistance,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordPoints,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordEvents,new LinearLayout.LayoutParams(0,dp(68),1));p.addView(stats);
+        LinearLayout live=new LinearLayout(this);
+        RecordingSummary.Snapshot liveStats=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
+        recordElapsed=metric(formatDuration(liveStats.elapsedMs),getString(R.string.metric_duration));
+        recordAverage=metric(String.format(Locale.getDefault(),"%.1f km/h",liveStats.averageKmh),getString(R.string.metric_average));
+        live.addView(recordElapsed,new LinearLayout.LayoutParams(0,dp(66),1));
+        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(66),1);avgLp.leftMargin=dp(8);
+        live.addView(recordAverage,avgLp);p.addView(live);
         LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);recordMain=pill(recording?"Terminer et sauvegarder":"Commencer l’enregistrement",recording?RED:accent);recordMain.setOnClickListener(v->{press(v);if(recording)finishRecording();else startRecording();});main.addView(recordMain,new LinearLayout.LayoutParams(-1,dp(60)));LinearLayout flags=new LinearLayout(this);flags.setPadding(0,dp(10),0,0);main.addView(flags);reverseButton=pill("Marche arrière",SURFACE2);twoSidesButton=pill("2 côtés",SURFACE2);reverseButton.setOnClickListener(v->addEvent("REVERSE","Marche arrière"));twoSidesButton.setOnClickListener(v->addEvent("TWO_SIDES","2 côtés"));LinearLayout.LayoutParams b1=new LinearLayout.LayoutParams(0,dp(54),1);b1.leftMargin=dp(8);flags.addView(reverseButton,b1);LinearLayout.LayoutParams b2=new LinearLayout.LayoutParams(0,dp(54),1);b2.leftMargin=dp(7);flags.addView(twoSidesButton,b2);p.addView(main);
         pauseButton=pill(paused?"Reprendre":"Pause",SURFACE2);pauseButton.setOnClickListener(v->togglePause());LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(46));pp.topMargin=dp(8);p.addView(pauseButton,pp);setFlagEnabled(recording);TextView info=text("Ajoute les repères au fil du parcours. La tournée est sauvegardée automatiquement.",12,Typeface.NORMAL,MUTED);info.setPadding(0,dp(17),0,0);p.addView(info);sv.addView(p);return sv;
     }
@@ -547,7 +554,11 @@ public class RoutixActivity extends AppCompatActivity {
     };
     private void syncTracking(){if(tracker==null||!tracker.ready||isDestroyed())return;boolean changed=recording!=tracker.recording||paused!=tracker.paused||guiding!=(tracker.guidance!=null);recording=tracker.recording;paused=tracker.paused;recordingStarted=tracker.started;recordedDistance=tracker.distance;guiding=tracker.guidance!=null;guidingRoute=tracker.route;guidance=tracker.guidance;
         // Copy only the counters into the existing recording UI; service owns the point lists.
-        if(recordDistance!=null)recordDistance.setText(formatDistance(recordedDistance)+"\nDISTANCE");if(recordPoints!=null)recordPoints.setText(tracker.points.size()+"\nPOINTS");if(recordEvents!=null)recordEvents.setText(tracker.events.size()+"\nREPÈRES");
+        if(recordDistance!=null)recordDistance.setText(formatDistance(recordedDistance)+"\nDISTANCE");
+        RecordingSummary.Snapshot session=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
+        if(recordElapsed!=null)recordElapsed.setText(formatDuration(session.elapsedMs)+"\n"+getString(R.string.metric_duration));
+        if(recordAverage!=null)recordAverage.setText(String.format(Locale.getDefault(),"%.1f km/h",session.averageKmh)+"\n"+getString(R.string.metric_average));
+        updateGpsStatus();if(recordPoints!=null)recordPoints.setText(tracker.points.size()+"\nPOINTS");if(recordEvents!=null)recordEvents.setText(tracker.events.size()+"\nREPÈRES");
         if(changed)showTab(selectedTab,false);if(recordMain!=null)recordMain.setEnabled(!tracker.saving);drawRecordingTrace();if(tracker.location!=null)onLocationChanged(tracker.location);else if(guiding)drawRemaining(tracker.guidanceState);applyRuntimePrefs();
         if(!recoveryOffered){recoveryOffered=true;if(!recording&&store.hasDraft())offerDraftRecovery();}
     }
@@ -588,6 +599,19 @@ public class RoutixActivity extends AppCompatActivity {
     private static String monthLabel(String month){try{return new SimpleDateFormat("MMMM yyyy",Locale.getDefault()).format(new SimpleDateFormat("yyyy-MM",Locale.FRANCE).parse(month));}catch(Exception e){return month;}}
 
     private void rebuildChrome(){if(root==null)return;if(topBar!=null)root.removeView(topBar);if(dock!=null)root.removeView(dock);topBar=buildTopBar();dock=buildDock();root.addView(topBar);root.addView(dock);topBar.bringToFront();contentHost.bringToFront();dock.bringToFront();updateDock();positionChrome();applyRuntimePrefs();}
+    private void updateGpsStatus(){
+        if(gpsStatus==null||tracker==null)return;
+        Location current=tracker.location;
+        long age=current==null?Long.MAX_VALUE:
+            (android.os.SystemClock.elapsedRealtimeNanos()-current.getElapsedRealtimeNanos())/1_000_000L;
+        if(age<0||age>20_000||current==null){
+            gpsStatus.setText(getString(R.string.gps_missing));gpsStatus.setTextColor(PEACH);
+        }else if(current.getAccuracy()>35){
+            gpsStatus.setText(getString(R.string.gps_weak));gpsStatus.setTextColor(PEACH);
+        }else{
+            gpsStatus.setText(getString(R.string.gps_ok));gpsStatus.setTextColor(GREEN);
+        }
+    }
     private void applyRuntimePrefs(){boolean saver=prefs.getBoolean("battery_saver",true);if((recording||guiding)&&!saver&&prefs.getBoolean("keep_screen",false))getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(mapLogo!=null)mapLogo.setVisibility("map".equals(selectedTab)&&false?View.VISIBLE:View.GONE);if(headerSpeed!=null)headerSpeed.setVisibility(prefs.getBoolean("show_speed",true)?View.VISIBLE:View.GONE);}
     private void positionChrome(){if(root==null||topBar==null||dock==null||contentHost==null)return;boolean compact=guiding&&"map".equals(selectedTab);int top=systemTop+dp(compact?4:8),bottom=systemBottom+dp(compact?4:8),topH=dp(compact?50:64),dockH=dp(compact?50:70);FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);hp.setMargins(dp(10),top,dp(10),0);topBar.setLayoutParams(hp);FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);dpv.setMargins(dp(10),0,dp(10),bottom);dock.setLayoutParams(dpv);if(modern!=null)modern.inset(top+topH);if(mapLogo!=null){FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(dp(52),dp(52),Gravity.TOP|Gravity.START);ml.setMargins(dp(14),top+topH+dp(10),0,0);mapLogo.setLayoutParams(ml);}if("map".equals(selectedTab)){FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);cp.setMargins(dp(compact?6:10),0,dp(compact?6:10),bottom+dockH+dp(compact?5:8));contentHost.setLayoutParams(cp);}else{FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));contentHost.setLayoutParams(cp);}}
 

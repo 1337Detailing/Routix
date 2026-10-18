@@ -39,4 +39,9 @@
     <string name="background_gps_explanation">Allow background location in Android app permissions to resume tracking after a restart. Android may still restrict background starts.</string>
     <string name="menu_battery">Battery optimization</string>
     <string name="battery_explanation">To prevent Android from suspending recording, allow Routix to run without battery restrictions.</string>
+    <string name="metric_duration">Duration</string>
+    <string name="metric_average">Average speed</string>
+    <string name="gps_missing">GPS lost</string>
+    <string name="gps_weak">GPS weak</string>
+    <string name="gps_ok">GPS good</string>
 </resources>
