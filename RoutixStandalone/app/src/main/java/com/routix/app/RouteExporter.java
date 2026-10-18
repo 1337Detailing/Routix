@@ -40,7 +40,7 @@ final class RouteExporter {
         }
     }
     private static void cell(Writer w,String value)throws IOException{
-        w.write('"');w.write((value==null?"":value).replace(""",""""));w.write('"');
+        w.write('"');w.write((value==null?"":value).replace("\"","\"\""));w.write('"');
     }
     private static void kml(Writer w,RouteStore.Summary r,String displayName)throws IOException{
         w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
