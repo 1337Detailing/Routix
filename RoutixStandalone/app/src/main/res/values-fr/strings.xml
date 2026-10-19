@@ -11,17 +11,13 @@
     <string name="tab_routes">Tournées</string>
     <string name="tab_more">Plus</string>
     <string name="screen_record">Enregistrer</string>
-    <string name="screen_hours">Heures</string>
     <string name="screen_gpx">Outils GPX</string>
     <string name="screen_more">Plus</string>
     <string name="screen_stats">Statistiques</string>
     <string name="screen_settings">Réglages</string>
-    <string name="screen_plan">Plan vers parcours</string>
-    <string name="menu_hours">Heures travaillées</string>
     <string name="menu_offline">Cartes hors ligne</string>
     <string name="menu_updates">Mises à jour</string>
     <string name="menu_diagnostics">Exporter le diagnostic</string>
-    <string name="menu_plan_beta">Plan vers parcours (bêta)</string>
     <string name="notification_active">Routix · tournée active</string>
     <string name="notification_open">Toucher pour reprendre</string>
     <string name="notification_recording">Enregistrement en cours</string>
@@ -105,4 +101,18 @@
     <string name="stats_no_routes">Aucune tournée terminée</string>
     <string name="stats_no_routes_summary">Les prochaines tournées terminées apparaîtront automatiquement ici.</string>
     <string name="menu_privacy">Politique de confidentialité</string>
+    <string name="speed_gps_active">GPS actif</string>
+    <string name="speed_gps_waiting">GPS…</string>
+    <string name="speed_unavailable">Vitesse indisponible, GPS en attente</string>
+    <string name="speed_accessibility">%1$d kilomètres par heure</string>
+    <string name="record_status_paused">EN PAUSE</string>
+    <string name="record_status_active">ENREGISTREMENT ACTIF</string>
+    <string name="record_status_ready">PRÊT</string>
+    <string name="metric_distance">DISTANCE</string>
+    <string name="metric_points">POINTS</string>
+    <string name="metric_markers">REPÈRES</string>
+    <string name="metric_routes">TOURNÉES</string>
+    <string name="metric_covered">COUVERT</string>
+    <string name="metric_remaining">RESTANT</string>
+    <string name="stats_average_short">MOYENNE</string>
 </resources>

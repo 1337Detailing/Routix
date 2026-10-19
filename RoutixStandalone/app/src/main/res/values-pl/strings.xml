@@ -12,17 +12,13 @@
     <string name="tab_routes">Trasy</string>
     <string name="tab_more">Więcej</string>
     <string name="screen_record">Nagrywanie</string>
-    <string name="screen_hours">Godziny</string>
     <string name="screen_gpx">Narzędzia GPX</string>
     <string name="screen_more">Więcej</string>
     <string name="screen_stats">Statystyki</string>
     <string name="screen_settings">Ustawienia</string>
-    <string name="screen_plan">Plan na trasę</string>
-    <string name="menu_hours">Godziny pracy</string>
     <string name="menu_offline">Mapy offline</string>
     <string name="menu_updates">Aktualizacje</string>
     <string name="menu_diagnostics">Eksportuj diagnostykę</string>
-    <string name="menu_plan_beta">Plan na trasę (beta)</string>
     <string name="notification_active">Routix · aktywna trasa</string>
     <string name="notification_open">Dotknij, aby wrócić</string>
     <string name="notification_recording">Trwa nagrywanie trasy</string>
@@ -106,4 +102,18 @@
     <string name="stats_no_routes">Brak ukończonych tras</string>
     <string name="stats_no_routes_summary">Ukończone trasy pojawią się tutaj.</string>
     <string name="menu_privacy">Polityka prywatności</string>
+    <string name="speed_gps_active">GPS aktywny</string>
+    <string name="speed_gps_waiting">GPS oczekuje</string>
+    <string name="speed_unavailable">Prędkość niedostępna, czekam na GPS</string>
+    <string name="speed_accessibility">%1$d kilometrów na godzinę</string>
+    <string name="record_status_paused">WSTRZYMANO</string>
+    <string name="record_status_active">NAGRYWANIE</string>
+    <string name="record_status_ready">GOTOWE</string>
+    <string name="metric_distance">DYSTANS</string>
+    <string name="metric_points">PUNKTY</string>
+    <string name="metric_markers">ZNACZNIKI</string>
+    <string name="metric_routes">TRASY</string>
+    <string name="metric_covered">POKONANO</string>
+    <string name="metric_remaining">POZOSTAŁO</string>
+    <string name="stats_average_short">ŚREDNIA</string>
 </resources>

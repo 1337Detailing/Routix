@@ -12,17 +12,13 @@
     <string name="tab_routes">Routen</string>
     <string name="tab_more">Mehr</string>
     <string name="screen_record">Aufzeichnen</string>
-    <string name="screen_hours">Stunden</string>
     <string name="screen_gpx">GPX-Werkzeuge</string>
     <string name="screen_more">Mehr</string>
     <string name="screen_stats">Statistik</string>
     <string name="screen_settings">Einstellungen</string>
-    <string name="screen_plan">Plan in Route</string>
-    <string name="menu_hours">Arbeitszeit</string>
     <string name="menu_offline">Offline-Karten</string>
     <string name="menu_updates">Updates</string>
     <string name="menu_diagnostics">Diagnose exportieren</string>
-    <string name="menu_plan_beta">Plan in Route (Beta)</string>
     <string name="notification_active">Routix · Route aktiv</string>
     <string name="notification_open">Tippen, um fortzufahren</string>
     <string name="notification_recording">Route wird aufgezeichnet</string>
@@ -106,4 +102,18 @@
     <string name="stats_no_routes">Keine abgeschlossenen Routen</string>
     <string name="stats_no_routes_summary">Abgeschlossene Routen erscheinen hier.</string>
     <string name="menu_privacy">Datenschutzerklärung</string>
+    <string name="speed_gps_active">GPS aktiv</string>
+    <string name="speed_gps_waiting">GPS wartet</string>
+    <string name="speed_unavailable">Tempo nicht verfügbar, warte auf GPS</string>
+    <string name="speed_accessibility">%1$d Kilometer pro Stunde</string>
+    <string name="record_status_paused">PAUSIERT</string>
+    <string name="record_status_active">AUFZEICHNUNG LÄUFT</string>
+    <string name="record_status_ready">BEREIT</string>
+    <string name="metric_distance">STRECKE</string>
+    <string name="metric_points">PUNKTE</string>
+    <string name="metric_markers">MARKIERUNGEN</string>
+    <string name="metric_routes">ROUTEN</string>
+    <string name="metric_covered">ABGEDECKT</string>
+    <string name="metric_remaining">VERBLEIBEND</string>
+    <string name="stats_average_short">DURCHSCHNITT</string>
 </resources>

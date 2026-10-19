@@ -12,17 +12,13 @@
     <string name="tab_routes">Маршруты</string>
     <string name="tab_more">Ещё</string>
     <string name="screen_record">Запись</string>
-    <string name="screen_hours">Часы</string>
     <string name="screen_gpx">Инструменты GPX</string>
     <string name="screen_more">Ещё</string>
     <string name="screen_stats">Статистика</string>
     <string name="screen_settings">Настройки</string>
-    <string name="screen_plan">План в маршрут</string>
-    <string name="menu_hours">Рабочие часы</string>
     <string name="menu_offline">Офлайн-карты</string>
     <string name="menu_updates">Обновления</string>
     <string name="menu_diagnostics">Экспорт диагностики</string>
-    <string name="menu_plan_beta">План в маршрут (бета)</string>
     <string name="notification_active">Routix · активный маршрут</string>
     <string name="notification_open">Нажмите, чтобы продолжить</string>
     <string name="notification_recording">Запись маршрута</string>
@@ -106,4 +102,18 @@
     <string name="stats_no_routes">Нет завершённых маршрутов</string>
     <string name="stats_no_routes_summary">Завершённые маршруты появятся здесь.</string>
     <string name="menu_privacy">Политика конфиденциальности</string>
+    <string name="speed_gps_active">GPS активен</string>
+    <string name="speed_gps_waiting">Ожидание GPS</string>
+    <string name="speed_unavailable">Скорость недоступна, ожидание GPS</string>
+    <string name="speed_accessibility">%1$d километров в час</string>
+    <string name="record_status_paused">ПАУЗА</string>
+    <string name="record_status_active">ИДЁТ ЗАПИСЬ</string>
+    <string name="record_status_ready">ГОТОВО</string>
+    <string name="metric_distance">РАССТОЯНИЕ</string>
+    <string name="metric_points">ТОЧКИ</string>
+    <string name="metric_markers">МЕТКИ</string>
+    <string name="metric_routes">МАРШРУТЫ</string>
+    <string name="metric_covered">ПРОЙДЕНО</string>
+    <string name="metric_remaining">ОСТАЛОСЬ</string>
+    <string name="stats_average_short">СРЕДНЕЕ</string>
 </resources>

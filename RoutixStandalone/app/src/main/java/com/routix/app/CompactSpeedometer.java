@@ -18,8 +18,8 @@ final class CompactSpeedometer extends View {
     private long fixNanos;
     private boolean valid;
     private Location previousFix;
-    private final Runnable expire=()->{valid=false;setContentDescription("Vitesse indisponible, GPS en attente");invalidate();};
-    CompactSpeedometer(Context context){super(context);theme=RoutixTheme.from(context);setContentDescription("Vitesse indisponible, GPS en attente");}
+    private final Runnable expire=()->{valid=false;setContentDescription(getResources().getString(R.string.speed_unavailable));invalidate();};
+    CompactSpeedometer(Context context){super(context);theme=RoutixTheme.from(context);setContentDescription(getResources().getString(R.string.speed_unavailable));}
     void update(Location location){
         removeCallbacks(expire);
         if(location==null){expire.run();return;}
@@ -40,7 +40,7 @@ final class CompactSpeedometer extends View {
         speed=valid?Math.max(0,metresPerSecond*3.6f):0;
         fixNanos=location.getElapsedRealtimeNanos();
         if(fresh&&precise)previousFix=new Location(location);
-        setContentDescription(valid?Math.round(speed)+" kilomètres par heure":"Vitesse indisponible, GPS en attente");
+        setContentDescription(valid?getResources().getString(R.string.speed_accessibility,Math.round(speed)):getResources().getString(R.string.speed_unavailable));
         invalidate();if(valid)postDelayed(expire,Math.max(1,5000-age/1000000));
     }
     @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(valid){long remaining=5000-(SystemClock.elapsedRealtimeNanos()-fixNanos)/1000000;if(remaining<=0)expire.run();else postDelayed(expire,remaining);}}
@@ -50,6 +50,6 @@ final class CompactSpeedometer extends View {
         paint.setStyle(Paint.Style.FILL);paint.setTextAlign(Paint.Align.LEFT);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));paint.setTextSize(30*density);paint.setColor(theme.text);
         String value=valid?String.valueOf(Math.round(speed)):"—";canvas.drawText(value,4*density,34*density,paint);
         float x=Math.max(56*density,paint.measureText(value)+10*density);paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));paint.setTextSize(12*density);paint.setColor(theme.muted());canvas.drawText("km/h",x,25*density,paint);
-        paint.setTextSize(10*density);paint.setColor(valid?theme.readable(theme.green):theme.muted());canvas.drawText(valid?"GPS actif":"GPS…",x,40*density,paint);
+        paint.setTextSize(10*density);paint.setColor(valid?theme.readable(theme.green):theme.muted());canvas.drawText(getResources().getString(valid?R.string.speed_gps_active:R.string.speed_gps_waiting),x,40*density,paint);
     }
 }
