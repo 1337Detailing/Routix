@@ -151,7 +151,7 @@ public class RoutixActivity extends AppCompatActivity {
     private void showTab(String key,boolean animate){
         if("hours".equals(key)||"planlab".equals(key))key="more";
         selectedTab=key;contentHost.animate().cancel();contentHost.setAlpha(1);contentHost.setTranslationY(0);contentHost.setScaleX(1);contentHost.setScaleY(1);contentHost.removeAllViews();boolean mapMode="map".equals(key);map.setVisibility(mapMode&&offline?View.VISIBLE:View.GONE);if(modern!=null)modern.setVisible(mapMode&&!offline);topBar.setVisibility(View.VISIBLE);if(mapAttribution!=null){mapAttribution.setVisibility(mapMode?View.VISIBLE:View.GONE);mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");}
-        if(mapMode){contentHost.addView(mapCard());}else if("record".equals(key))contentHost.addView(recordPage());else if("routes".equals(key))contentHost.addView(routesPage());else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());else if("settings".equals(key))contentHost.addView(settingsPage());else if("stats".equals(key))contentHost.addView(statsPage());else if("more".equals(key))contentHost.addView(morePage());recordSheet="record".equals(key)?contentHost:null;updateDock();positionChrome();
+        if(mapMode){contentHost.addView(mapCard());}else if("record".equals(key))contentHost.addView(recordPage());else if("routes".equals(key))contentHost.addView(routesPage());else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());else if("settings".equals(key))contentHost.addView(settingsPage());else if("stats".equals(key))contentHost.addView(statsPage());else if("more".equals(key))contentHost.addView(morePage());recordSheet="record".equals(key)?contentHost:null;updateDock();positionChrome();if(mapMode)drawRecordingTrace();
         if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){int d=animDuration();contentHost.setAlpha(0);contentHost.setTranslationY(dp((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?20:8));contentHost.setScaleX((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.setScaleY((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.animate().alpha(1).translationY(0).scaleX(1).scaleY(1).setDuration(d).start();}
     }
     private void updateDock(){ViewGroup r=(ViewGroup)dock;for(int i=0;i<r.getChildCount();i++){TextView t=(TextView)r.getChildAt(i);boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));t.setTextColor(on?accent:MUTED);TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setBackground(on?surface(SURFACE2,12):null);if((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))&&!(guiding&&prefs.getBoolean("battery_saver",true)))t.animate().scaleX(on?1.055f:1f).scaleY(on?1.055f:1f).setDuration(180).start();}}
@@ -493,7 +493,19 @@ public class RoutixActivity extends AppCompatActivity {
     private String maneuverGlyph(GuidanceEngine.Maneuver m){if(m==null)return "↑";if(m.direction<0)return "↰";if(m.direction==1)return "↱";if(m.direction==2)return "↶";return "↑";}
 
     private final List<Polyline> extraRecordingLines=new ArrayList<>();
+    private int renderedTracePoints=-1,renderedTraceColor,renderedTraceWidth;
+    private long renderedTraceSession=-1;
+    private boolean renderedTraceOffline,renderedTraceRecording;
     private void drawRecordingTrace(){
+        // The recording page still receives GPS updates, but its map is not visible.
+        if(!"map".equals(selectedTab)){renderedTracePoints=-1;return;}
+        int count=tracker==null?0:tracker.points.size();
+        int color=recordingColor(),width=dp(Math.max(5,prefs.getInt("route_width",10)-2));
+        long session=tracker==null?-1:tracker.started;
+        if(renderedTracePoints==count&&renderedTraceColor==color&&renderedTraceWidth==width
+            &&renderedTraceSession==session&&renderedTraceRecording==recording&&renderedTraceOffline==offline)return;
+        renderedTracePoints=count;renderedTraceColor=color;renderedTraceWidth=width;
+        renderedTraceSession=session;renderedTraceRecording=recording;renderedTraceOffline=offline;
         if(recordingLine==null)return;
         if(!recording||tracker==null||tracker.points.size()<2){
             recordingLine.setPoints(Collections.emptyList());
@@ -521,7 +533,6 @@ public class RoutixActivity extends AppCompatActivity {
         }
         while(extraRecordingLines.size()>segments.size()-1)
             map.getOverlays().remove(extraRecordingLines.remove(extraRecordingLines.size()-1));
-        int color=recordingColor(), width=dp(Math.max(5,prefs.getInt("route_width",10)-2));
         for(int i=0;i<segments.size();i++){
             Polyline line=i==0?recordingLine:extraRecordingLines.get(i-1);
             line.setPoints(offline?segments.get(i):Collections.emptyList());
@@ -623,7 +634,7 @@ public class RoutixActivity extends AppCompatActivity {
     private void applyRuntimePrefs(){boolean saver=prefs.getBoolean("battery_saver",true);if((recording||guiding)&&!saver&&prefs.getBoolean("keep_screen",false))getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(headerSpeed!=null)headerSpeed.setVisibility(prefs.getBoolean("show_speed",true)?View.VISIBLE:View.GONE);}
     private void positionChrome(){if(root==null||topBar==null||dock==null||contentHost==null)return;boolean compact=guiding&&"map".equals(selectedTab);int top=systemTop+dp(compact?4:8),bottom=systemBottom+dp(compact?4:8),topH=dp(compact?50:64),dockH=dp(compact?50:70);FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);hp.setMargins(dp(10),top,dp(10),0);topBar.setLayoutParams(hp);FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);dpv.setMargins(dp(10),0,dp(10),bottom);dock.setLayoutParams(dpv);if(modern!=null)modern.inset(top+topH);if(mapAttribution!=null){FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.BOTTOM|Gravity.START);ml.setMargins(dp(12),0,0,bottom+dockH+dp(10));mapAttribution.setLayoutParams(ml);}if("map".equals(selectedTab)){FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);cp.setMargins(dp(compact?6:10),0,dp(compact?6:10),bottom+dockH+dp(compact?5:8));contentHost.setLayoutParams(cp);}else{FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));contentHost.setLayoutParams(cp);}}
 
-    private void createModernMap(){if(modern!=null)return;modern=new ModernMapController(this,root,createPositionIcon(prefs.getString("position_icon","Camion")),mapState);modern.onStart();modern.setVisible(!offline&&"map".equals(selectedTab));positionChrome();}
+    private void createModernMap(){if(modern!=null)return;renderedTracePoints=-1;modern=new ModernMapController(this,root,createPositionIcon(prefs.getString("position_icon","Camion")),mapState);modern.onStart();modern.setVisible(!offline&&"map".equals(selectedTab));positionChrome();}
     @Override protected void onStart(){super.onStart();if(modern==null)createModernMap();else modern.onStart();bound=bindService(new Intent(this,TrackingService.class),connection,BIND_AUTO_CREATE);}
     @Override protected void onResume(){super.onResume();visible=true;if(map!=null&&offline)map.onResume();if(modern!=null)modern.onResume();if(tracker!=null)tracker.observe(this::syncTracking);}
     @Override protected void onPause(){visible=false;if(tracker!=null)tracker.observe(null);if(modern!=null)modern.onPause();if(map!=null)map.onPause();super.onPause();}
