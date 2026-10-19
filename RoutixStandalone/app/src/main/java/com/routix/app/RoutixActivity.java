@@ -324,7 +324,7 @@ public class RoutixActivity extends AppCompatActivity {
 
     private View morePage(){ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_more),"");
         menu(p,getString(R.string.screen_stats),"",()->showTab("stats",true));menu(p,getString(R.string.screen_settings),"",()->showTab("settings",true));
-        menu(p,getString(R.string.menu_offline),"",this::offlineMenu);menu(p,getString(R.string.menu_updates),"",this::updateMenu);menu(p,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);
+        menu(p,getString(R.string.menu_offline),"",this::offlineMenu);menu(p,getString(R.string.menu_updates),"",this::updateMenu);menu(p,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);menu(p,getString(R.string.menu_privacy),"",()->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://1337detailing.github.io/Routix/privacy.html"))));
         TextView advanced=pill(getString(R.string.advanced_settings),SURFACE2);p.addView(advanced,new LinearLayout.LayoutParams(-1,dp(52)));LinearLayout extra=new LinearLayout(this);extra.setOrientation(LinearLayout.VERTICAL);extra.setVisibility(View.GONE);menu(extra,getString(R.string.screen_gpx),"",()->showTab("gpxlab",true));p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
     private View statsPage(){
         ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_stats),"");

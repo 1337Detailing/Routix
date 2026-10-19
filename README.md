@@ -1,15 +1,23 @@
 # Routix
 
-![Routix](docs/assets/logo.svg)
+Application Android de suivi de parcours et de tournées GPS : enregistrement, repères, navigation sur une trace et import/export GPX, KML et CSV.
 
-Routix est une application Android pour enregistrer, organiser et suivre ses trajets GPS.
-Cartes, repères et guidage sur tracé, avec prise en charge des fichiers GPX.
+**Site :** https://1337detailing.github.io/Routix/  
+**Confidentialité :** [Politique de confidentialité](PRIVACY.md)
 
-## Installation
+## Compiler
 
-Télécharge l’APK depuis les [exécutions de compilation](https://github.com/1337Detailing/Routix/actions/workflows/build-debug-apk.yml), puis installe-le sur Android 8 ou plus récent.
-Pour compiler : `cd RoutixStandalone && gradle :app:assembleDebug`.
+JDK 17 et SDK Android 36 sont requis.
+
+```bash
+cd RoutixStandalone
+gradle :app:testDebugUnitTest :app:assembleDebug
+```
+
+Les builds de test sont disponibles dans [GitHub Actions](https://github.com/1337Detailing/Routix/actions/workflows/build-debug-apk.yml).
+
+Pour publier sur Google Play, consulter [PLAY_STORE.md](PLAY_STORE.md).
 
 ## Licence
 
-[GPL-3.0](LICENSE) — les avis d’auteurs et les licences des composants tiers sont conservés.
+Code du dépôt : [GPL-3.0](LICENSE). Les dépendances et données cartographiques gardent leurs licences et attributions respectives ; voir [AUTHORS.md](AUTHORS.md).

@@ -104,4 +104,5 @@
     <string name="stats_history">Historique</string>
     <string name="stats_no_routes">Aucune tournée terminée</string>
     <string name="stats_no_routes_summary">Les prochaines tournées terminées apparaîtront automatiquement ici.</string>
+    <string name="menu_privacy">Politique de confidentialité</string>
 </resources>

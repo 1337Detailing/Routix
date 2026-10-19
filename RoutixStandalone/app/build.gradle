@@ -4,18 +4,37 @@ plugins {
 
 android {
     namespace 'com.routix.app'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.routix.app'
         minSdk 26
-        targetSdk 35
+        targetSdk 36
         def runNumber = System.getenv('GITHUB_RUN_NUMBER')
-        versionCode runNumber ? 200000 + runNumber.toInteger() : 200027
-        versionName runNumber ? "2.1.${runNumber}" : '2.1.0'
+        def publishCode = System.getenv('ROUTIX_VERSION_CODE')
+        versionCode publishCode ? publishCode.toInteger() : (runNumber ? 300000 + runNumber.toInteger() : 300001)
+        versionName System.getenv('ROUTIX_VERSION_NAME') ?: '2.2.0'
     }
 
     testOptions { unitTests.includeAndroidResources = true }
+
+    // Signing uses environment variables; credentials are never stored in the repository.
+    def uploadKeystore = System.getenv('ROUTIX_UPLOAD_STORE_FILE')
+    def uploadPassword = System.getenv('ROUTIX_UPLOAD_STORE_PASSWORD')
+    def uploadAlias = System.getenv('ROUTIX_UPLOAD_KEY_ALIAS')
+    def uploadKeyPassword = System.getenv('ROUTIX_UPLOAD_KEY_PASSWORD')
+    def hasUploadSigning = [uploadKeystore, uploadPassword, uploadAlias, uploadKeyPassword].every { it != null && !it.trim().isEmpty() }
+
+    if (hasUploadSigning) {
+        signingConfigs {
+            play {
+                storeFile file(uploadKeystore)
+                storePassword uploadPassword
+                keyAlias uploadAlias
+                keyPassword uploadKeyPassword
+            }
+        }
+    }
 
     if (System.getenv('GITHUB_ACTIONS') == 'true') {
         signingConfigs {
@@ -30,7 +49,9 @@ android {
 
     buildTypes {
         release {
+            // Keep shrinker disabled until MapLibre and osmdroid rules are verified on devices.
             minifyEnabled false
+            if (hasUploadSigning) signingConfig signingConfigs.play
         }
         debug {
             // Keep this stable forever: future CI APKs replace previous Routix debug installs.

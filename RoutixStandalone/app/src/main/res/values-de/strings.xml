@@ -105,4 +105,5 @@
     <string name="stats_history">Verlauf</string>
     <string name="stats_no_routes">Keine abgeschlossenen Routen</string>
     <string name="stats_no_routes_summary">Abgeschlossene Routen erscheinen hier.</string>
+    <string name="menu_privacy">Datenschutzerklärung</string>
 </resources>

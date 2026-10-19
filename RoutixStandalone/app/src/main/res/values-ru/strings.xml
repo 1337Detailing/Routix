@@ -105,4 +105,5 @@
     <string name="stats_history">История</string>
     <string name="stats_no_routes">Нет завершённых маршрутов</string>
     <string name="stats_no_routes_summary">Завершённые маршруты появятся здесь.</string>
+    <string name="menu_privacy">Политика конфиденциальности</string>
 </resources>

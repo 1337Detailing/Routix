@@ -1,0 +1,71 @@
+name: Build Play Store bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Release version (for example 2.2.0)'
+        required: true
+        default: '2.2.0'
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Verify signing configuration
+        env:
+          STORE_BASE64: ${{ secrets.ROUTIX_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ROUTIX_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ROUTIX_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ROUTIX_UPLOAD_KEY_PASSWORD }}
+        run: |
+          for value in "$STORE_BASE64" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD"; do
+            if [ -z "$value" ]; then
+              echo "::error::Configure the four ROUTIX_UPLOAD_* GitHub Actions secrets first."
+              exit 1
+            fi
+          done
+
+      - name: Restore Play upload key
+        env:
+          STORE_BASE64: ${{ secrets.ROUTIX_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$STORE_BASE64" | base64 --decode > "$RUNNER_TEMP/routix-upload.jks"
+          chmod 600 "$RUNNER_TEMP/routix-upload.jks"
+
+      - name: Test and sign AAB
+        working-directory: RoutixStandalone
+        env:
+          ROUTIX_UPLOAD_STORE_FILE: ${{ runner.temp }}/routix-upload.jks
+          ROUTIX_UPLOAD_STORE_PASSWORD: ${{ secrets.ROUTIX_UPLOAD_STORE_PASSWORD }}
+          ROUTIX_UPLOAD_KEY_ALIAS: ${{ secrets.ROUTIX_UPLOAD_KEY_ALIAS }}
+          ROUTIX_UPLOAD_KEY_PASSWORD: ${{ secrets.ROUTIX_UPLOAD_KEY_PASSWORD }}
+          ROUTIX_VERSION_NAME: ${{ inputs.version_name }}
+          ROUTIX_VERSION_CODE: ${{ github.run_number }}
+        run: gradle :app:testDebugUnitTest :app:bundleRelease --stacktrace
+
+      - name: Upload signed bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Routix-Play-AAB
+          path: RoutixStandalone/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 7

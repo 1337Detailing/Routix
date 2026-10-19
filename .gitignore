@@ -1,57 +1,30 @@
-*.test.txt
-*.render.xml
-*.render_template.xml
-poi_types.xml
-*.map_styles_presets.xml
-routing*.xml
-rendering_types.xml
-activities.json
-countries.reginfo
-regions.ocbf
-h_*.png
-g_*.png
-mm_*.png
-mx_*.png
-OsmAndCore_wrapper.jar
-OsmAndCore_*.aar
+# Local Android/Gradle files
+.gradle/
+**/build/
+.idea/
+*.iml
+local.properties
+**/local.properties
 *.class
-*.iml
-.settings
-.idea
-**/.project
-**/.classpath
-out/
-.kotlin/
+*.hprof
 
-# Huawei
-agconnect-services.json
-OsmAndHms.jks
+# Signing credentials and upload bundles
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+keystore.properties
+signing.properties
+*.aab
+*.apk
 
-# Android Studio
-java_pid*.hprof
-.attach_pid*
-hs_err_pid*
-/.idea
-*.iml
-
-# Gradle
-.gradle
-/local.properties
-
-# MacOSX
+# OS/editor artifacts
 .DS_Store
-
-# Windows
 Thumbs.db
+*.swp
+*.log
 
-# Output files
-build
-
-#Rendering test files
-OsmAnd-java/src/test/resources/rendering/*
-OsmAnd-shared/bin
-# ApproximationTest resources
-OsmAnd-java/src/test/resources/approximation/*
-#Shared library resources
-OsmAnd-shared/src/androidMain/resources/
-OsmAnd-shared/src/jvmMain/resources/
+# Generated map data
+*.map
+*.obf
