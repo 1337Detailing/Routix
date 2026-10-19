@@ -60,7 +60,9 @@ jobs:
           ROUTIX_UPLOAD_KEY_PASSWORD: ${{ secrets.ROUTIX_UPLOAD_KEY_PASSWORD }}
           ROUTIX_VERSION_NAME: ${{ inputs.version_name }}
           ROUTIX_VERSION_CODE: ${{ github.run_number }}
-        run: gradle :app:testDebugUnitTest :app:bundleRelease --stacktrace
+        run: |
+          export ROUTIX_VERSION_CODE=$((300000 + ROUTIX_VERSION_CODE))
+          gradle :app:testDebugUnitTest :app:bundleRelease --stacktrace
 
       - name: Upload signed bundle
         uses: actions/upload-artifact@v4
