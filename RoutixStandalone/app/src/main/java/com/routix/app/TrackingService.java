@@ -112,6 +112,13 @@ public final class TrackingService extends Service implements LocationListener {
     private void publish(){updateTrackingNotification();if(listener!=null)try{listener.changed();}catch(RuntimeException e){DiagnosticLog.error("UI observer",e);}}
     private void publishLocation(boolean moving){if(listener==null)return;long now=SystemClock.elapsedRealtime();long min=prefs.getBoolean("battery_saver",true)?(moving?900:3000):500;if(now-lastUiPublishMs<min)return;lastUiPublishMs=now;publish();}
     private void write(Runnable task){try{io.execute(()->{try{task.run();}catch(RuntimeException e){DiagnosticLog.error("session persistence",e);if(!closed)main.post(()->android.widget.Toast.makeText(this,"Sauvegarde impossible : vérifie le stockage. Exporte le diagnostic.",android.widget.Toast.LENGTH_LONG).show());}});}catch(RejectedExecutionException e){DiagnosticLog.error("session persistence rejected",e);}}
+    private String voiceText(int resource){
+        String tag=prefs==null?"":prefs.getString("app_language","");
+        if(tag.isEmpty())return getString(resource);
+        android.content.res.Configuration config=new android.content.res.Configuration(getResources().getConfiguration());
+        config.setLocale(Locale.forLanguageTag(tag));
+        return createConfigurationContext(config).getString(resource);
+    }
     private void ensureSpeech(){if(speech!=null||closed||!prefs.getBoolean("voice_markers",true))return;speechReady=false;speech=new TextToSpeech(this,status->{if(closed)return;speechReady=status==TextToSpeech.SUCCESS;if(speechReady&&speech!=null){String code=prefs.getString("app_language","");Locale voice=code.isEmpty()?Locale.getDefault():Locale.forLanguageTag(code);speech.setLanguage(voice);}});}
     private void releaseSpeech(){speechReady=false;if(speech!=null){try{speech.stop();speech.shutdown();}catch(RuntimeException e){DiagnosticLog.error("speech shutdown",e);}speech=null;}spoken=null;}
 
@@ -186,7 +193,7 @@ public final class TrackingService extends Service implements LocationListener {
         try{if(guidance!=null){
             if(fix.getAccuracy()<=45){if(lastAcceptedGuidanceFix==null||lastAcceptedGuidanceFix.getAccuracy()>45)lastAcceptedGuidanceFix=new Location(fix);else{float travelled=lastAcceptedGuidanceFix.distanceTo(fix);long dt=(fix.getElapsedRealtimeNanos()-lastAcceptedGuidanceFix.getElapsedRealtimeNanos())/1_000_000L;if(GpsMovementFilter.plausible(travelled,dt,lastAcceptedGuidanceFix.getAccuracy(),fix.getAccuracy())){if(travelled>=2.5f)guidanceTravelDistance+=travelled;lastAcceptedGuidanceFix=new Location(fix);}}}
             guidance.setOffRouteThreshold(prefs.getInt("offroute_m",45));guidanceState=guidance.update(fix.getLatitude(),fix.getLongitude(),fix.getElapsedRealtimeNanos()/1000000,fix.getAccuracy());if(guidanceCoverage!=null&&!guidanceState.poorAccuracy&&!guidanceState.offRoute)guidanceCoverage.observe(guidanceState.nearestIndex,guidanceState.distanceToTraceM);float progress=guidance.progressM();persistProgress(progress,false);persistGuidanceStats(false);GuidanceEngine.Event next=guidanceState.nextEvent;
-            if(next!=null&&next!=spoken&&!guidanceState.poorAccuracy&&!guidanceState.offRoute&&guidanceState.distanceToNextEventM<55&&prefs.getBoolean("voice_markers",true)){ensureSpeech();if(speechReady&&speech!=null){speech.speak(next.label+" "+getString(R.string.tts_in)+" "+Math.round(guidanceState.distanceToNextEventM)+" "+getString(R.string.tts_metres),TextToSpeech.QUEUE_FLUSH,null,"marker");spoken=next;}}
+            if(next!=null&&next!=spoken&&!guidanceState.poorAccuracy&&!guidanceState.offRoute&&guidanceState.distanceToNextEventM<55&&prefs.getBoolean("voice_markers",true)){ensureSpeech();if(speechReady&&speech!=null){String tag=prefs.getString("app_language","");speech.setLanguage(tag.isEmpty()?Locale.getDefault():Locale.forLanguageTag(tag));speech.speak(next.label+" "+voiceText(R.string.tts_in)+" "+Math.round(guidanceState.distanceToNextEventM)+" "+voiceText(R.string.tts_metres),TextToSpeech.QUEUE_FLUSH,null,"marker");spoken=next;}}
         }}catch(RuntimeException e){DiagnosticLog.error("guidance fix",e);}
         publishLocation(moving);
     }
