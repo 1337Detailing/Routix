@@ -39,7 +39,13 @@ final class RouteExporter {
         }
     }
     private static void cell(Writer w,String value)throws IOException{
-        w.write('"');w.write((value==null?"":value).replace("\"","\"\""));w.write('"');
+        String text=value==null?"":value;
+        // CSV quoting protects the format, not spreadsheet formula evaluation.
+        // Prefix untrusted formula-looking labels to make them literal in Excel/Sheets.
+        int first=0;
+        while(first<text.length()&&Character.isWhitespace(text.charAt(first)))first++;
+        if(first<text.length()&&"=+-@".indexOf(text.charAt(first))>=0)text="'"+text;
+        w.write('"');w.write(text.replace("\"","\"\""));w.write('"');
     }
     private static void kml(Writer w,RouteStore.Summary r,String displayName)throws IOException{
         w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
