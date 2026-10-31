@@ -86,7 +86,7 @@ public class RoutixActivity extends AppCompatActivity {
         if(state!=null&&state.getString("detail_file")!=null)detailFile=new File(store.routesDir(),new File(state.getString("detail_file")).getName());showTab(state==null?"map":state.getString("workspace","map"),false);ensureLocation();applyRuntimePrefs();new Thread(()->{store.restoreBackups();runOnUiThread(()->{if(!isDestroyed()&&"routes".equals(selectedTab))showTab("routes",false);});},"restore-backups").start();
     }
 
-    private void applyThemeTokens(){theme=RoutixTheme.from(prefs);BG=theme.background;SURFACE=theme.surface;SURFACE2=theme.surface0;TEXT=theme.content;MUTED=theme.secondaryContent;GREEN=theme.success;PEACH=theme.warning;RED=theme.error;MAUVE=theme.mauve;BLUE=theme.blue;PINK=theme.pink;TEAL=theme.teal;YELLOW=theme.yellow;}
+    private void applyThemeTokens(){theme=RoutixTheme.from(this);BG=theme.background;SURFACE=theme.surface;SURFACE2=theme.surface0;TEXT=theme.content;MUTED=theme.secondaryContent;GREEN=theme.success;PEACH=theme.warning;RED=theme.error;MAUVE=theme.mauve;BLUE=theme.blue;PINK=theme.pink;TEAL=theme.teal;YELLOW=theme.yellow;}
 
     private void migrateMapPreference(){String s=prefs==null?null:prefs.getString("map_style",null);if(s==null||s.startsWith("apple_")||"terrain".equals(s))prefs.edit().putString("map_style","osm").apply();}
 
@@ -115,8 +115,8 @@ public class RoutixActivity extends AppCompatActivity {
             org.osmdroid.mapsforge.MapsForgeTileSource source=org.osmdroid.mapsforge.MapsForgeTileSource.createFromFiles(new File[]{FranceOfflineManager.file(this,pack)},new org.mapsforge.map.rendertheme.ExternalRenderTheme(theme),"routix-"+name,"fr");
             map.setTileProvider(new org.osmdroid.mapsforge.MapsForgeTileProvider(new org.osmdroid.tileprovider.util.SimpleRegisterReceiver(this),source,null));offline=true;
         }catch(Exception e){DiagnosticLog.error("offline map",e);toast("Pack hors ligne illisible : carte en ligne utilisée");}
-        if(modern!=null){modern.refreshStyle();modern.setVisible(!offline&&"map".equals(selectedTab));}
-        map.setVisibility(offline&&"map".equals(selectedTab)?View.VISIBLE:View.GONE);map.setAlpha(offline?1:0);if(mapAttribution!=null)mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");if(guiding)redrawGuidance();map.invalidate();
+        if(modern!=null){modern.refreshStyle();modern.setVisible(!offline&&("map".equals(selectedTab)||"record".equals(selectedTab)));}
+        map.setVisibility(offline&&("map".equals(selectedTab)||"record".equals(selectedTab))?View.VISIBLE:View.GONE);map.setAlpha(offline?1:0);if(mapAttribution!=null)mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");if(guiding)redrawGuidance();map.invalidate();
     }
 
     private Bitmap createPositionIcon(String style){
@@ -129,13 +129,38 @@ public class RoutixActivity extends AppCompatActivity {
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(2));p.setColor(theme.onAccent());c.drawCircle(z/2f,z/2f,z*.43f,p);return b;
     }
 
+
     private View buildTopBar(){
-        LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(5),dp(8),dp(5));bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(2));
-        headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(170),dp(50)));
-        gpsStatus=text("GPS",11f,Typeface.BOLD,MUTED);TextView status=gpsStatus;status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
-        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.width=0;bar.addView(status,statusLp);
+        LinearLayout bar=new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(12),dp(5),dp(12),dp(5));
+        bar.setBackground(surface(SURFACE,24));
+        bar.setElevation(dp(6));
+        LinearLayout brand=new LinearLayout(this);
+        brand.setOrientation(LinearLayout.VERTICAL);
+        TextView name=text("routix",18,Typeface.BOLD,TEXT);
+        brand.addView(name);
+        TextView label=text("GPS & TOURNÉES",9,Typeface.BOLD,MUTED);
+        brand.addView(label);
+        brand.setContentDescription("Routix · carte et tournées");
+        brand.setOnClickListener(v->showTab("map",true));
+        bar.addView(brand,new LinearLayout.LayoutParams(dp(86),-2));
+        headerSpeed=new CompactSpeedometer(this);
+        LinearLayout.LayoutParams speedLp=new LinearLayout.LayoutParams(dp(104),dp(50));
+        speedLp.leftMargin=dp(2);
+        bar.addView(headerSpeed,speedLp);
+        gpsStatus=text("GPS",11,Typeface.BOLD,MUTED);
+        gpsStatus.setGravity(Gravity.CENTER);
+        gpsStatus.setSingleLine(true);
+        gpsStatus.setPadding(dp(5),0,dp(5),0);
+        gpsStatus.setBackground(surface(SURFACE2,99));
+        gpsStatus.setContentDescription("État de la localisation GPS");
+        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,dp(38),1);
+        statusLp.leftMargin=dp(4);
+        bar.addView(gpsStatus,statusLp);
         return bar;
     }
+
     private View buildMapControls(){
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
         TextView north=icon(headingUp?"↑":"N");north.setContentDescription("Basculer cap en haut ou nord en haut");
@@ -145,33 +170,178 @@ public class RoutixActivity extends AppCompatActivity {
         return actions;
     }
 
-    private View buildDock(){LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));row.setBackground(surface(SURFACE,24));row.setElevation(dp(2));tab(row,"⌖",getString(R.string.tab_map),"map");tab(row,"●",getString(R.string.tab_record),"record");tab(row,"≡",getString(R.string.tab_routes),"routes");tab(row,"•••",getString(R.string.tab_more),"more");return row;}
-    private void tab(LinearLayout row,String glyph,String label,String key){TextView t=text(label,12,Typeface.BOLD,MUTED);TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);t.setTag(key);t.setContentDescription(label);t.setOnClickListener(v->showTab(key,true));row.addView(t,new LinearLayout.LayoutParams(0,-1,1));}
+
+    private View buildDock(){
+        LinearLayout row=new LinearLayout(this);
+        row.setPadding(dp(5),dp(5),dp(5),dp(5));
+        row.setBackground(surface(SURFACE,28));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setElevation(dp(10));
+        tab(row,"⌖",getString(R.string.tab_map),"map");
+        tab(row,"●",getString(R.string.tab_record),"record");
+        tab(row,"≡",getString(R.string.tab_routes),"routes");
+        tab(row,"•••",getString(R.string.tab_more),"more");
+        return row;
+    }
+    private void tab(LinearLayout row,String glyph,String label,String key){
+        TextView t=text(label,11,Typeface.BOLD,MUTED);
+        TerrainIcon symbol=new TerrainIcon(key,MUTED);
+        symbol.setBounds(0,0,dp(23),dp(23));
+        t.setCompoundDrawables(null,symbol,null,null);
+        t.setCompoundDrawablePadding(dp(3));
+        t.setGravity(Gravity.CENTER);
+        t.setTag(key);
+        t.setContentDescription(label);
+        t.setMinHeight(dp(54));
+        t.setOnClickListener(v->{press(v);showTab(key,true);});
+        row.addView(t,new LinearLayout.LayoutParams(0,-1,1));
+    }
+
 
     private void showTab(String key,boolean animate){
         if("hours".equals(key)||"planlab".equals(key))key="more";
-        selectedTab=key;contentHost.animate().cancel();contentHost.setAlpha(1);contentHost.setTranslationY(0);contentHost.setScaleX(1);contentHost.setScaleY(1);contentHost.removeAllViews();boolean mapMode="map".equals(key);map.setVisibility(mapMode&&offline?View.VISIBLE:View.GONE);if(modern!=null)modern.setVisible(mapMode&&!offline);topBar.setVisibility(View.VISIBLE);if(mapAttribution!=null){mapAttribution.setVisibility(mapMode?View.VISIBLE:View.GONE);mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");}
-        if(mapMode){contentHost.addView(mapCard());}else if("record".equals(key))contentHost.addView(recordPage());else if("routes".equals(key))contentHost.addView(routesPage());else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());else if("settings".equals(key))contentHost.addView(settingsPage());else if("stats".equals(key))contentHost.addView(statsPage());else if("more".equals(key))contentHost.addView(morePage());recordSheet="record".equals(key)?contentHost:null;updateDock();positionChrome();if(mapMode)drawRecordingTrace();
-        if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){int d=animDuration();contentHost.setAlpha(0);contentHost.setTranslationY(dp((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?20:8));contentHost.setScaleX((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.setScaleY((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.animate().alpha(1).translationY(0).scaleX(1).scaleY(1).setDuration(d).start();}
+        selectedTab=key;
+        contentHost.animate().cancel();
+        contentHost.setAlpha(1);
+        contentHost.setTranslationY(0);
+        contentHost.setScaleX(1);
+        contentHost.setScaleY(1);
+        contentHost.removeAllViews();
+        boolean mapMode="map".equals(key);
+        boolean mapVisible=mapMode||"record".equals(key);
+        map.setVisibility(mapVisible&&offline?View.VISIBLE:View.GONE);
+        if(modern!=null)modern.setVisible(mapVisible&&!offline);
+        topBar.setVisibility(View.VISIBLE);
+        if(mapAttribution!=null){
+            mapAttribution.setVisibility(mapVisible?View.VISIBLE:View.GONE);
+            mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");
+        }
+        contentHost.setBackgroundColor(mapVisible?Color.TRANSPARENT:BG);
+        if(mapMode)contentHost.addView(mapCard());
+        else if("record".equals(key))contentHost.addView(recordPage());
+        else if("routes".equals(key))contentHost.addView(routesPage());
+        else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));
+        else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());
+        else if("settings".equals(key))contentHost.addView(settingsPage());
+        else if("stats".equals(key))contentHost.addView(statsPage());
+        else if("more".equals(key))contentHost.addView(morePage());
+        recordSheet="record".equals(key)?contentHost:null;
+        updateDock();
+        positionChrome();
+        if(mapVisible)drawRecordingTrace();
+        if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);
+        if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){
+            contentHost.setAlpha(0);
+            contentHost.setTranslationY(dp(10));
+            contentHost.animate().alpha(1).translationY(0).setDuration(Math.min(300,animDuration())).start();
+        }
     }
-    private void updateDock(){ViewGroup r=(ViewGroup)dock;for(int i=0;i<r.getChildCount();i++){TextView t=(TextView)r.getChildAt(i);boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));t.setTextColor(on?accent:MUTED);TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setBackground(on?surface(SURFACE2,12):null);if((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))&&!(guiding&&prefs.getBoolean("battery_saver",true)))t.animate().scaleX(on?1.055f:1f).scaleY(on?1.055f:1f).setDuration(180).start();}}
+    private void updateDock(){
+        ViewGroup row=(ViewGroup)dock;
+        for(int i=0;i<row.getChildCount();i++){
+            TextView item=(TextView)row.getChildAt(i);
+            String key=String.valueOf(item.getTag());
+            boolean active=selectedTab.equals(key)||("routes".equals(key)&&"detail".equals(selectedTab))||
+                ("more".equals(key)&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&
+                !"routes".equals(selectedTab)&&!"detail".equals(selectedTab));
+            boolean record="record".equals(key);
+            int tint=record?theme.onAccent():(active?accent:MUTED);
+            item.setTextColor(tint);
+            TerrainIcon symbol=new TerrainIcon(key,tint);
+            symbol.setBounds(0,0,dp(23),dp(23));
+            item.setCompoundDrawables(null,symbol,null,null);
+            item.setBackground(surface(record?accent:(active?theme.tint(accent):SURFACE),record?22:20));
+        }
+    }
+
 
     private View mapCard(){
-        LinearLayout floating=new LinearLayout(this);floating.setOrientation(LinearLayout.VERTICAL);View floatingControls=buildMapControls();LinearLayout.LayoutParams controlLayout=new LinearLayout.LayoutParams(-2,dp(guiding?46:52));controlLayout.gravity=Gravity.END;controlLayout.bottomMargin=dp(guiding?6:10);floating.addView(floatingControls,controlLayout);
-        if(!guiding)return floating;
-        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(8),dp(7),dp(8),dp(7));card.setBackground(surface(SURFACE,22));card.setElevation(dp(2));
-        guideCue=text("GPS en attente…",17,Typeface.BOLD,TEXT);guideCue.setSingleLine(true);guideCue.setEllipsize(android.text.TextUtils.TruncateAt.END);guideCue.setGravity(Gravity.CENTER_VERTICAL);guideCue.setPadding(dp(10),0,dp(10),0);guideCue.setBackground(surface(SURFACE2,12));card.addView(guideCue,new LinearLayout.LayoutParams(-1,dp(48)));
-        LinearLayout essential=new LinearLayout(this);essential.setGravity(Gravity.CENTER_VERTICAL);essential.setPadding(0,dp(5),0,0);
-        guideDistance=compactMetric("—",getString(R.string.metric_remaining));essential.addView(guideDistance,new LinearLayout.LayoutParams(0,dp(46),1));
-        TextView follow=pill(getString(R.string.route_follow),SURFACE2);follow.setMinHeight(0);follow.setOnClickListener(v->{press(v);guidanceCameraFollow=true;recenter();});LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(46),1);fp.leftMargin=dp(5);essential.addView(follow,fp);
-        TextView stop=pill(getString(R.string.route_stop),RED);stop.setMinHeight(0);stop.setOnClickListener(v->stopGuidance());LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(46),.8f);sp.leftMargin=dp(5);essential.addView(stop,sp);
-        TextView more=pill("•••",SURFACE2);more.setMinHeight(0);more.setContentDescription("Plus d’actions de guidage");LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(dp(48),dp(46));mp.leftMargin=dp(5);essential.addView(more,mp);card.addView(essential);
-        LinearLayout secondary=new LinearLayout(this);secondary.setGravity(Gravity.CENTER_VERTICAL);secondary.setPadding(0,dp(5),0,0);secondary.setVisibility(View.GONE);
-        guideProgress=compactMetric("—",getString(R.string.metric_covered));secondary.addView(guideProgress,new LinearLayout.LayoutParams(0,dp(44),1));
-        TextView resume=pill(getString(R.string.route_resume_here),SURFACE2);resume.setMinHeight(0);resume.setOnClickListener(v->resumeGuidanceHere());LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(44),1.2f);rp.leftMargin=dp(5);secondary.addView(resume,rp);card.addView(secondary);
+        LinearLayout floating=new LinearLayout(this);
+        floating.setOrientation(LinearLayout.VERTICAL);
+        View controls=buildMapControls();
+        LinearLayout.LayoutParams c=new LinearLayout.LayoutParams(-2,dp(54));
+        c.gravity=Gravity.END;
+        c.bottomMargin=dp(10);
+        floating.addView(controls,c);
+        if(!guiding){
+            LinearLayout sheet=new LinearLayout(this);
+            sheet.setOrientation(LinearLayout.VERTICAL);
+            sheet.setPadding(dp(15),dp(12),dp(15),dp(14));
+            sheet.setBackground(surface(SURFACE,28));
+            sheet.setElevation(dp(8));
+            LinearLayout head=new LinearLayout(this);
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout copy=new LinearLayout(this);
+            copy.setOrientation(LinearLayout.VERTICAL);
+            copy.addView(text(recording?"●  Enregistrement en cours":"Prêt pour la route",17,Typeface.BOLD,recording?GREEN:TEXT));
+            copy.addView(text(recording?"Votre tracé est sauvegardé en continu":"Carte, parcours et suivi GPS",11,Typeface.NORMAL,MUTED));
+            head.addView(copy,new LinearLayout.LayoutParams(0,-2,1));
+            sheet.addView(head);
+            LinearLayout actions=new LinearLayout(this);
+            LinearLayout.LayoutParams apl=new LinearLayout.LayoutParams(-1,dp(54));
+            apl.topMargin=dp(12);
+            TextView launch=pill(recording?"Voir l'enregistrement":"●  Enregistrer",accent);
+            launch.setOnClickListener(v->{press(v);if(!recording)startRecording();showTab("record",true);});
+            TextView routes=pill("Mes tournées",SURFACE2);
+            routes.setOnClickListener(v->{press(v);showTab("routes",true);});
+            actions.addView(launch,new LinearLayout.LayoutParams(0,-1,1.15f));
+            LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);
+            rp.leftMargin=dp(9);
+            actions.addView(routes,rp);
+            sheet.addView(actions,apl);
+            floating.addView(sheet);
+            return floating;
+        }
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12),dp(12),dp(12),dp(12));
+        card.setBackground(surface(SURFACE,28));
+        card.setElevation(dp(8));
+        guideCue=text("GPS en attente…",17,Typeface.BOLD,TEXT);
+        guideCue.setSingleLine(true);
+        guideCue.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        guideCue.setGravity(Gravity.CENTER_VERTICAL);
+        guideCue.setPadding(dp(14),0,dp(14),0);
+        guideCue.setBackground(surface(theme.tint(accent),18));
+        card.addView(guideCue,new LinearLayout.LayoutParams(-1,dp(52)));
+        LinearLayout essential=new LinearLayout(this);
+        essential.setGravity(Gravity.CENTER_VERTICAL);
+        essential.setPadding(0,dp(9),0,0);
+        guideDistance=compactMetric("—",getString(R.string.metric_remaining));
+        essential.addView(guideDistance,new LinearLayout.LayoutParams(0,dp(52),1.15f));
+        TextView follow=pill(getString(R.string.route_follow),SURFACE2);
+        follow.setOnClickListener(v->{press(v);guidanceCameraFollow=true;recenter();});
+        LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(52),1);
+        fp.leftMargin=dp(7);
+        essential.addView(follow,fp);
+        TextView stop=pill(getString(R.string.route_stop),RED);
+        stop.setOnClickListener(v->{press(v);stopGuidance();});
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(52),.9f);
+        sp.leftMargin=dp(7);
+        essential.addView(stop,sp);
+        TextView more=pill("•••",SURFACE2);
+        more.setContentDescription("Autres actions de guidage");
+        LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(dp(52),dp(52));
+        mp.leftMargin=dp(7);
+        essential.addView(more,mp);
+        card.addView(essential);
+        LinearLayout secondary=new LinearLayout(this);
+        secondary.setGravity(Gravity.CENTER_VERTICAL);
+        secondary.setPadding(0,dp(8),0,0);
+        secondary.setVisibility(View.GONE);
+        guideProgress=compactMetric("—",getString(R.string.metric_covered));
+        secondary.addView(guideProgress,new LinearLayout.LayoutParams(0,dp(52),1));
+        TextView resume=pill(getString(R.string.route_resume_here),SURFACE2);
+        resume.setOnClickListener(v->{press(v);resumeGuidanceHere();});
+        LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(52),1.2f);
+        rp.leftMargin=dp(7);
+        secondary.addView(resume,rp);
+        card.addView(secondary);
         more.setOnClickListener(v->{press(v);boolean open=secondary.getVisibility()!=View.VISIBLE;secondary.setVisibility(open?View.VISIBLE:View.GONE);more.setText(open?"⌄":"•••");});
-        floating.addView(card);return floating;
+        floating.addView(card);
+        return floating;
     }
+
     private TextView flagBubble(String glyph,int color){TextView t=text(glyph,22,Typeface.BOLD,color);t.setGravity(Gravity.CENTER);t.setBackground(surface(SURFACE2,23));t.setElevation(dp(4));return t;}
 
     private View recordPage(){
@@ -499,7 +669,7 @@ public class RoutixActivity extends AppCompatActivity {
     private boolean renderedTraceOffline,renderedTraceRecording;
     private void drawRecordingTrace(){
         // The recording page still receives GPS updates, but its map is not visible.
-        if(!"map".equals(selectedTab)){renderedTracePoints=-1;return;}
+        if(!"map".equals(selectedTab)&&!"record".equals(selectedTab)){renderedTracePoints=-1;return;}
         int count=tracker==null?0:tracker.points.size();
         int color=recordingColor(),width=dp(Math.max(5,prefs.getInt("route_width",10)-2));
         long session=tracker==null?-1:tracker.started;
@@ -633,9 +803,43 @@ public class RoutixActivity extends AppCompatActivity {
         }
     }
     private void applyRuntimePrefs(){boolean saver=prefs.getBoolean("battery_saver",true);if((recording||guiding)&&!saver&&prefs.getBoolean("keep_screen",false))getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(headerSpeed!=null)headerSpeed.setVisibility(prefs.getBoolean("show_speed",true)?View.VISIBLE:View.GONE);}
-    private void positionChrome(){if(root==null||topBar==null||dock==null||contentHost==null)return;boolean compact=guiding&&"map".equals(selectedTab);int top=systemTop+dp(compact?4:8),bottom=systemBottom+dp(compact?4:8),topH=dp(compact?50:64),dockH=dp(compact?50:70);FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);hp.setMargins(dp(10),top,dp(10),0);topBar.setLayoutParams(hp);FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);dpv.setMargins(dp(10),0,dp(10),bottom);dock.setLayoutParams(dpv);if(modern!=null)modern.inset(top+topH);if(mapAttribution!=null){FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.BOTTOM|Gravity.START);ml.setMargins(dp(12),0,0,bottom+dockH+dp(10));mapAttribution.setLayoutParams(ml);}if("map".equals(selectedTab)){FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);cp.setMargins(dp(compact?6:10),0,dp(compact?6:10),bottom+dockH+dp(compact?5:8));contentHost.setLayoutParams(cp);}else{FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));contentHost.setLayoutParams(cp);}}
 
-    private void createModernMap(){if(modern!=null)return;renderedTracePoints=-1;modern=new ModernMapController(this,root,createPositionIcon(prefs.getString("position_icon","Camion")),mapState);modern.onStart();modern.setVisible(!offline&&"map".equals(selectedTab));positionChrome();}
+    private void positionChrome(){
+        if(root==null||topBar==null||dock==null||contentHost==null)return;
+        boolean guide=guiding&&"map".equals(selectedTab);
+        int top=systemTop+dp(8),bottom=systemBottom+dp(8);
+        int topH=dp(64),dockH=dp(76);
+        FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);
+        hp.setMargins(dp(10),top,dp(10),0);
+        topBar.setLayoutParams(hp);
+        FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);
+        dpv.setMargins(dp(10),0,dp(10),bottom);
+        dock.setLayoutParams(dpv);
+        if(modern!=null)modern.inset(top+topH);
+        if(mapAttribution!=null){
+            FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.BOTTOM|Gravity.START);
+            ml.setMargins(dp(12),0,0,bottom+dockH+dp(8));
+            mapAttribution.setLayoutParams(ml);
+        }
+        if("map".equals(selectedTab)){
+            FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);
+            cp.setMargins(dp(10),0,dp(10),bottom+dockH+dp(8));
+            contentHost.setLayoutParams(cp);
+        }else if("record".equals(selectedTab)){
+            int screen=root.getHeight()>0?root.getHeight():getResources().getDisplayMetrics().heightPixels;
+            int available=Math.max(dp(90),screen-top-topH-bottom-dockH-dp(18));
+            int height=Math.min(dp(406),available);
+            FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,height,Gravity.BOTTOM);
+            cp.setMargins(dp(10),0,dp(10),bottom+dockH+dp(8));
+            contentHost.setLayoutParams(cp);
+        }else{
+            FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);
+            cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));
+            contentHost.setLayoutParams(cp);
+        }
+    }
+
+    private void createModernMap(){if(modern!=null)return;renderedTracePoints=-1;modern=new ModernMapController(this,root,createPositionIcon(prefs.getString("position_icon","Camion")),mapState);modern.onStart();modern.setVisible(!offline&&("map".equals(selectedTab)||"record".equals(selectedTab)));positionChrome();}
     @Override protected void onStart(){super.onStart();if(modern==null)createModernMap();else modern.onStart();bound=bindService(new Intent(this,TrackingService.class),connection,BIND_AUTO_CREATE);}
     @Override protected void onResume(){super.onResume();visible=true;if(map!=null&&offline)map.onResume();if(modern!=null)modern.onResume();if(tracker!=null)tracker.observe(this::syncTracking);}
     @Override protected void onPause(){visible=false;if(tracker!=null)tracker.observe(null);if(modern!=null)modern.onPause();if(map!=null)map.onPause();super.onPause();}
