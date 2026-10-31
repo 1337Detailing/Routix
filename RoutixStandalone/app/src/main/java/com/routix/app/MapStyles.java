@@ -9,7 +9,7 @@ final class MapStyles {
     static RoutixTheme.Tokens tokens(SharedPreferences p){
         RoutixTheme.Tokens t=RoutixTheme.from(p);String appearance=p.getString("map_appearance","theme");
         if(p.getBoolean("auto_night",false)){int hour=java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);appearance=hour>=20||hour<7?"dark":"light";}
-        return "light".equals(appearance)?RoutixTheme.lightMap():"dark".equals(appearance)?RoutixTheme.from(p):t;
+        return "light".equals(appearance)?RoutixTheme.lightMap():"dark".equals(appearance)?new RoutixTheme.Tokens(false):t;
     }
     static boolean dark(SharedPreferences prefs){return !tokens(prefs).light();}
     static boolean vela(SharedPreferences prefs) {
