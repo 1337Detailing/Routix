@@ -1,9 +1,9 @@
 <resources>
-    <color name="routix_base">#0A0A0A</color>
-    <color name="routix_mantle">#151513</color>
-    <color name="routix_text">#EBE9E3</color>
-    <color name="routix_accent">#D8C48A</color>
-    <color name="routix_latte_base">#F5F2E9</color>
-    <color name="routix_latte_text">#1F1E1B</color>
-    <color name="routix_latte_accent">#D8C48A</color>
+    <color name="routix_base">#0C121C</color>
+    <color name="routix_mantle">#161E2C</color>
+    <color name="routix_text">#EEF3FB</color>
+    <color name="routix_accent">#A4BEFF</color>
+    <color name="routix_latte_base">#F5F7FC</color>
+    <color name="routix_latte_text">#1A2639</color>
+    <color name="routix_latte_accent">#A4BEFF</color>
 </resources>
