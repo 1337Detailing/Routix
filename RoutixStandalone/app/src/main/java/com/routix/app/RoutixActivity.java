@@ -457,7 +457,7 @@ public class RoutixActivity extends AppCompatActivity {
     private View stringChoiceRow(String title,String key,String[] values,String[] labels,String def,Runnable changed){String cur=prefs.getString(key,def);int found=0;for(int i=0;i<values.length;i++)if(values[i].equals(cur)){found=i;break;}final int idx=found;LinearLayout row=settingsRow(title,labels[idx]);row.setOnClickListener(v->new RoutixDialogs.Builder(this).setTitle(title).setSingleChoiceItems(labels,idx,(d,w)->{prefs.edit().putString(key,values[w]).apply();d.dismiss();if(changed!=null)changed.run();showTab("settings",false);}).show());return row;}
     private LinearLayout settingsRow(String title,String value){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinHeight(dp(68));row.setPadding(dp(17),dp(13),dp(12),dp(13));
+        row.setMinimumHeight(dp(68));row.setPadding(dp(17),dp(13),dp(12),dp(13));
         row.setBackground(RoutixTheme.touch(theme,SURFACE,20,getResources().getDisplayMetrics().density));
         LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);
         TextView heading=text(title,14,Typeface.BOLD,TEXT);heading.setMaxLines(2);
@@ -477,7 +477,7 @@ public class RoutixActivity extends AppCompatActivity {
     }
     private View toggleRow(String title,String sub,String key,boolean def,Runnable changed){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinHeight(dp(70));row.setPadding(dp(17),dp(12),dp(14),dp(12));
+        row.setMinimumHeight(dp(70));row.setPadding(dp(17),dp(12),dp(14),dp(12));
         row.setBackground(RoutixTheme.touch(theme,SURFACE,20,getResources().getDisplayMetrics().density));
         LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);
         TextView heading=text(title,14,Typeface.BOLD,TEXT);heading.setMaxLines(2);tx.addView(heading);
@@ -679,7 +679,7 @@ public class RoutixActivity extends AppCompatActivity {
         LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);
         int pad=prefs.getBoolean("compact_ui",false)?16:20;
         p.setPadding(dp(pad),dp(17),dp(pad),dp(30));
-        TextView eyebrow=text("ROUTIX   /   WORKSPACE",10,Typeface.BOLD,accent);
+        TextView eyebrow=text("ROUTIX   /   NAVIGATION",10,Typeface.BOLD,accent);
         eyebrow.setLetterSpacing(.14f);
         LinearLayout.LayoutParams el=new LinearLayout.LayoutParams(-1,-2);el.bottomMargin=dp(7);
         p.addView(eyebrow,el);
