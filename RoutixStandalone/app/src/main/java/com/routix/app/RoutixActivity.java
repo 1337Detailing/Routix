@@ -193,6 +193,7 @@ public class RoutixActivity extends AppCompatActivity {
         t.setTag(key);
         t.setContentDescription(label);
         t.setMinHeight(dp(54));
+        t.setMinimumHeight(dp(54));
         t.setOnClickListener(v->{press(v);showTab(key,true);});
         row.addView(t,new LinearLayout.LayoutParams(0,-1,1));
     }
