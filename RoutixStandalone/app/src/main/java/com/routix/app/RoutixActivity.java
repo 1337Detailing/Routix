@@ -130,11 +130,17 @@ public class RoutixActivity extends AppCompatActivity {
     }
 
     private View buildTopBar(){
-        LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(5),dp(8),dp(5));bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(2));
-        headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(170),dp(50)));
-        gpsStatus=text("GPS",11f,Typeface.BOLD,MUTED);TextView status=gpsStatus;status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
-        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.width=0;bar.addView(status,statusLp);
-        return bar;
+        LinearLayout bar=new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(14),dp(5),dp(12),dp(5));
+        bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(5));
+        View accentRail=new View(this);accentRail.setBackground(surface(accent,99));
+        LinearLayout.LayoutParams rail=new LinearLayout.LayoutParams(dp(3),dp(29));rail.rightMargin=dp(11);bar.addView(accentRail,rail);
+        headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(148),dp(49)));
+        gpsStatus=text("GPS",11,Typeface.BOLD,MUTED);gpsStatus.setGravity(Gravity.CENTER);
+        gpsStatus.setContentDescription("État GPS");gpsStatus.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);
+        gpsStatus.setPadding(dp(6),0,dp(8),0);
+        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.leftMargin=dp(4);
+        bar.addView(gpsStatus,statusLp);return bar;
     }
     private View buildMapControls(){
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
@@ -145,8 +151,24 @@ public class RoutixActivity extends AppCompatActivity {
         return actions;
     }
 
-    private View buildDock(){LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));row.setBackground(surface(SURFACE,24));row.setElevation(dp(2));tab(row,"⌖",getString(R.string.tab_map),"map");tab(row,"●",getString(R.string.tab_record),"record");tab(row,"≡",getString(R.string.tab_routes),"routes");tab(row,"•••",getString(R.string.tab_more),"more");return row;}
-    private void tab(LinearLayout row,String glyph,String label,String key){TextView t=text(label,12,Typeface.BOLD,MUTED);TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);t.setTag(key);t.setContentDescription(label);t.setOnClickListener(v->showTab(key,true));row.addView(t,new LinearLayout.LayoutParams(0,-1,1));}
+    private View buildDock(){
+        LinearLayout row=new LinearLayout(this);row.setPadding(dp(6),dp(6),dp(6),dp(6));
+        row.setBackground(surface(SURFACE,26));row.setElevation(dp(5));
+        tab(row,"⌖",getString(R.string.tab_map),"map");
+        tab(row,"●",getString(R.string.tab_record),"record");
+        tab(row,"≡",getString(R.string.tab_routes),"routes");
+        tab(row,"•••",getString(R.string.tab_more),"more");
+        return row;
+    }
+    private void tab(LinearLayout row,String glyph,String label,String key){
+        TextView t=text(label,11,Typeface.BOLD,MUTED);
+        t.setLetterSpacing(.015f);t.setPadding(dp(2),dp(3),dp(2),dp(3));
+        TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(23),dp(23));
+        t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);
+        t.setTag(key);t.setContentDescription(label);
+        t.setOnClickListener(v->{press(v);showTab(key,true);});
+        row.addView(t,new LinearLayout.LayoutParams(0,-1,1));
+    }
 
     private void showTab(String key,boolean animate){
         if("hours".equals(key)||"planlab".equals(key))key="more";
@@ -154,7 +176,22 @@ public class RoutixActivity extends AppCompatActivity {
         if(mapMode){contentHost.addView(mapCard());}else if("record".equals(key))contentHost.addView(recordPage());else if("routes".equals(key))contentHost.addView(routesPage());else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());else if("settings".equals(key))contentHost.addView(settingsPage());else if("stats".equals(key))contentHost.addView(statsPage());else if("more".equals(key))contentHost.addView(morePage());recordSheet="record".equals(key)?contentHost:null;updateDock();positionChrome();if(mapMode)drawRecordingTrace();
         if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){int d=animDuration();contentHost.setAlpha(0);contentHost.setTranslationY(dp((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?20:8));contentHost.setScaleX((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.setScaleY((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.animate().alpha(1).translationY(0).scaleX(1).scaleY(1).setDuration(d).start();}
     }
-    private void updateDock(){ViewGroup r=(ViewGroup)dock;for(int i=0;i<r.getChildCount();i++){TextView t=(TextView)r.getChildAt(i);boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));t.setTextColor(on?accent:MUTED);TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setBackground(on?surface(SURFACE2,12):null);if((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))&&!(guiding&&prefs.getBoolean("battery_saver",true)))t.animate().scaleX(on?1.055f:1f).scaleY(on?1.055f:1f).setDuration(180).start();}}
+    private void updateDock(){
+        ViewGroup r=(ViewGroup)dock;
+        for(int i=0;i<r.getChildCount();i++){
+            TextView t=(TextView)r.getChildAt(i);
+            boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))
+                ||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)
+                &&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));
+            t.setSelected(on);t.setTextColor(on?TEXT:MUTED);
+            TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);
+            symbol.setBounds(0,0,dp(23),dp(23));t.setCompoundDrawables(null,symbol,null,null);
+            t.setBackground(on?RoutixTheme.selected(theme,getResources().getDisplayMetrics().density):null);
+            if(RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false)
+                &&!(guiding&&prefs.getBoolean("battery_saver",true)))
+                t.animate().scaleX(on?1.02f:1f).scaleY(on?1.02f:1f).setDuration(160).start();
+        }
+    }
 
     private View mapCard(){
         LinearLayout floating=new LinearLayout(this);floating.setOrientation(LinearLayout.VERTICAL);View floatingControls=buildMapControls();LinearLayout.LayoutParams controlLayout=new LinearLayout.LayoutParams(-2,dp(guiding?46:52));controlLayout.gravity=Gravity.END;controlLayout.bottomMargin=dp(guiding?6:10);floating.addView(floatingControls,controlLayout);
@@ -175,13 +212,13 @@ public class RoutixActivity extends AppCompatActivity {
     private TextView flagBubble(String glyph,int color){TextView t=text(glyph,22,Typeface.BOLD,color);t.setGravity(Gravity.CENTER);t.setBackground(surface(SURFACE2,23));t.setElevation(dp(4));return t;}
 
     private View recordPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_record),"");recordStatus=text(getString(recording?(paused?R.string.record_status_paused:R.string.record_status_active):R.string.record_status_ready),13,Typeface.BOLD,recording?GREEN:MUTED);p.addView(recordStatus);LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(12),0,dp(12));recordDistance=metric(formatDistance(recordedDistance),getString(R.string.metric_distance));recordPoints=metric(String.valueOf(tracker==null?0:tracker.points.size()),getString(R.string.metric_points));recordEvents=metric(String.valueOf(tracker==null?0:tracker.events.size()),getString(R.string.metric_markers));stats.addView(recordDistance,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordPoints,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordEvents,new LinearLayout.LayoutParams(0,dp(68),1));p.addView(stats);
+        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_record),"");recordStatus=text(getString(recording?(paused?R.string.record_status_paused:R.string.record_status_active):R.string.record_status_ready),12,Typeface.BOLD,recording?GREEN:MUTED);recordStatus.setPadding(dp(12),dp(8),dp(12),dp(8));recordStatus.setBackground(surface(SURFACE2,14));p.addView(recordStatus,new LinearLayout.LayoutParams(-2,-2));LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(12),0,dp(12));recordDistance=metric(formatDistance(recordedDistance),getString(R.string.metric_distance));recordPoints=metric(String.valueOf(tracker==null?0:tracker.points.size()),getString(R.string.metric_points));recordEvents=metric(String.valueOf(tracker==null?0:tracker.events.size()),getString(R.string.metric_markers));stats.addView(recordDistance,new LinearLayout.LayoutParams(0,dp(78),1));LinearLayout.LayoutParams pointsLp=new LinearLayout.LayoutParams(0,dp(78),1);pointsLp.leftMargin=dp(8);stats.addView(recordPoints,pointsLp);LinearLayout.LayoutParams eventLp=new LinearLayout.LayoutParams(0,dp(78),1);eventLp.leftMargin=dp(8);stats.addView(recordEvents,eventLp);p.addView(stats);
         LinearLayout live=new LinearLayout(this);
         RecordingSummary.Snapshot liveStats=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
         recordElapsed=metric(formatDuration(liveStats.elapsedMs),getString(R.string.metric_duration));
         recordAverage=metric(String.format(Locale.getDefault(),"%.1f km/h",liveStats.averageKmh),getString(R.string.metric_average));
-        live.addView(recordElapsed,new LinearLayout.LayoutParams(0,dp(66),1));
-        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(66),1);avgLp.leftMargin=dp(8);
+        live.addView(recordElapsed,new LinearLayout.LayoutParams(0,dp(78),1));
+        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(78),1);avgLp.leftMargin=dp(8);
         live.addView(recordAverage,avgLp);p.addView(live);
         LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);recordMain=pill(getString(recording?R.string.record_finish:R.string.record_start),recording?RED:accent);recordMain.setOnClickListener(v->{press(v);if(recording)finishRecording();else startRecording();});main.addView(recordMain,new LinearLayout.LayoutParams(-1,dp(60)));LinearLayout flags=new LinearLayout(this);flags.setPadding(0,dp(10),0,0);main.addView(flags);reverseButton=pill(getString(R.string.record_reverse),SURFACE2);twoSidesButton=pill(getString(R.string.record_both_sides),SURFACE2);reverseButton.setOnClickListener(v->addEvent("REVERSE","Marche arrière"));twoSidesButton.setOnClickListener(v->addEvent("TWO_SIDES","2 côtés"));LinearLayout.LayoutParams b1=new LinearLayout.LayoutParams(0,dp(54),1);b1.leftMargin=dp(8);flags.addView(reverseButton,b1);LinearLayout.LayoutParams b2=new LinearLayout.LayoutParams(0,dp(54),1);b2.leftMargin=dp(7);flags.addView(twoSidesButton,b2);p.addView(main);
         pauseButton=pill(getString(paused?R.string.notification_resume:R.string.notification_pause),SURFACE2);pauseButton.setOnClickListener(v->togglePause());LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(46));pp.topMargin=dp(8);p.addView(pauseButton,pp);setFlagEnabled(recording);TextView info=text(getString(R.string.record_help),12,Typeface.NORMAL,MUTED);info.setPadding(0,dp(17),0,0);p.addView(info);sv.addView(p);return sv;
@@ -191,7 +228,7 @@ public class RoutixActivity extends AppCompatActivity {
         ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.tab_routes),store.routeFiles().size()+" tournée(s) • dossiers et parcours");
         LinearLayout actions=new LinearLayout(this);TextView imp=pill(getString(R.string.routes_import),accent);imp.setOnClickListener(v->{press(v);importGpx();});TextView rec=pill(getString(R.string.routes_new),SURFACE2);rec.setOnClickListener(v->{press(v);showTab("record",true);});TextView folder=pill(getString(R.string.routes_folder),SURFACE2);folder.setOnClickListener(v->{press(v);createFolderDialog();});
         actions.addView(imp,new LinearLayout.LayoutParams(0,dp(48),1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(48),1);rp.leftMargin=dp(6);actions.addView(rec,rp);LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(48),.8f);fp.leftMargin=dp(6);actions.addView(folder,fp);p.addView(actions);
-        EditText search=new EditText(this);search.setHint(getString(R.string.routes_search));search.setHintTextColor(theme.secondaryContent);search.setTextColor(TEXT);search.setTextSize(14);search.setSingleLine(true);search.setPadding(dp(15),0,dp(15),0);search.setBackground(surface(SURFACE,18));LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(-1,dp(48));sl.topMargin=dp(12);p.addView(search,sl);
+        EditText search=new EditText(this);search.setHint(getString(R.string.routes_search));search.setHintTextColor(theme.secondaryContent);search.setTextColor(TEXT);search.setTextSize(14);search.setSingleLine(true);search.setPadding(dp(16),0,dp(14),0);search.setBackground(RoutixTheme.touch(theme,SURFACE,16,getResources().getDisplayMetrics().density));TerrainIcon magnifier=new TerrainIcon("search",MUTED);magnifier.setBounds(0,0,dp(20),dp(20));search.setCompoundDrawables(magnifier,null,null,null);search.setCompoundDrawablePadding(dp(10));LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(-1,dp(48));sl.topMargin=dp(12);p.addView(search,sl);
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams ll=new LinearLayout.LayoutParams(-1,-2);ll.topMargin=dp(5);p.addView(list,ll);List<File> files=store.routeFiles();renderRoutes(list,files,"");
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int count,int after){}public void onTextChanged(CharSequence s,int st,int before,int count){renderRoutes(list,files,s.toString());}public void afterTextChanged(Editable e){}});sv.addView(p);return sv;
     }
@@ -209,7 +246,7 @@ public class RoutixActivity extends AppCompatActivity {
             List<File> rootFiles=new ArrayList<>();for(File f:files)if(RouteFolderStore.ROOT.equals(folderStore.folderOf(f)))rootFiles.add(f);
             if(!rootFiles.isEmpty()){TextView rootLabel=text("SANS DOSSIER  •  "+rootFiles.size(),10,Typeface.BOLD,MUTED);rootLabel.setPadding(dp(4),dp(15),0,dp(2));list.addView(rootLabel);for(File f:rootFiles){list.addView(routeCard(f,index++));shown++;}}
         }
-        if(shown==0&&folderStore.folders().isEmpty()){TextView e=infoCard(q.isEmpty()?getString(R.string.routes_none):getString(R.string.routes_no_results),q.isEmpty()?getString(R.string.routes_empty_help):getString(R.string.routes_search_help));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(14);list.addView(e,lp);}
+        if((!q.isEmpty()&&shown==0)||(q.isEmpty()&&shown==0&&folderStore.folders().isEmpty())){TextView e=infoCard(q.isEmpty()?getString(R.string.routes_none):getString(R.string.routes_no_results),q.isEmpty()?getString(R.string.routes_empty_help):getString(R.string.routes_search_help));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(14);list.addView(e,lp);}
     }
 
     private View folderHeader(String folder,int count){
@@ -239,10 +276,10 @@ public class RoutixActivity extends AppCompatActivity {
     }
 
     private View routeCard(File f,int index){
-        RouteStore.Summary s=store.parse(f);LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(15),dp(14),dp(15),dp(14));card.setBackground(surface(SURFACE,23));card.setElevation(dp(1));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.topMargin=dp(9);card.setLayoutParams(cp);
+        RouteStore.Summary s=store.parse(f);LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(15),dp(14),dp(15),dp(14));card.setBackground(surface(SURFACE,24));card.setElevation(dp(2));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.topMargin=dp(9);card.setLayoutParams(cp);
         LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);TextView fav=icon("star");TerrainIcon star=new TerrainIcon("star",store.isFavorite(f)?YELLOW:MUTED);star.setBounds(0,0,dp(22),dp(22));fav.setCompoundDrawables(star,null,null,null);fav.setContentDescription(store.isFavorite(f)?getString(R.string.routes_remove_favourite):getString(R.string.routes_add_favourite));fav.setGravity(Gravity.CENTER);fav.setOnClickListener(v->{press(v);store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);});head.addView(fav,new LinearLayout.LayoutParams(dp(48),dp(48)));
         LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);TextView name=text(store.displayName(f),17,Typeface.BOLD,TEXT);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);names.addView(name);String folder=folderStore.folderOf(f);String source=f.getName().startsWith("Import_")?"IMPORT GPX":"TERRAIN ROUTIX";names.addView(text((folder.isEmpty()?"RACINE":folder.toUpperCase(Locale.ROOT))+" • "+formatDate(f.lastModified())+" • "+source,10,Typeface.NORMAL,MUTED));head.addView(names,new LinearLayout.LayoutParams(0,-2,1));TextView more=icon("•••");more.setOnClickListener(v->{press(v);routeMenu(f,s);});head.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));card.addView(head);
-        RoutePreviewView preview=new RoutePreviewView(this);preview.setPoints(s.points);preview.setClipToOutline(true);preview.setBackground(surface(SURFACE2,18));LinearLayout.LayoutParams pv=new LinearLayout.LayoutParams(-1,dp(110));pv.topMargin=dp(10);card.addView(preview,pv);
+        RoutePreviewView preview=new RoutePreviewView(this);preview.setPoints(s.points);preview.setClipToOutline(true);preview.setBackground(surface(SURFACE2,18));LinearLayout.LayoutParams pv=new LinearLayout.LayoutParams(-1,dp(110));pv.topMargin=dp(13);card.addView(preview,pv);
         LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(10),0,dp(9));stats.addView(summaryStat("DISTANCE",formatDistance(s.distanceM)),new LinearLayout.LayoutParams(0,-2,1));stats.addView(summaryStat("DURÉE",formatDuration(s.durationMs)),new LinearLayout.LayoutParams(0,-2,1));stats.addView(summaryStat("POINTS",String.valueOf(s.points.size())),new LinearLayout.LayoutParams(0,-2,1));stats.addView(summaryStat("REPÈRES",String.valueOf(s.events.size())),new LinearLayout.LayoutParams(0,-2,1));card.addView(stats);
         LinearLayout a=new LinearLayout(this);TextView guide=pill(getString(R.string.action_start),accent);guide.setOnClickListener(v->{press(v);startGuidance(s);});TextView plan=pill("Plan",SURFACE2);plan.setOnClickListener(v->{press(v);PrintablePlan.open(this,s,store.displayName(f));});TextView lab=pill(getString(R.string.routes_starter),SURFACE2);lab.setOnClickListener(v->{press(v);startGuidance(s);});a.addView(guide,new LinearLayout.LayoutParams(0,dp(52),1.2f));LinearLayout.LayoutParams p1=new LinearLayout.LayoutParams(0,dp(52),.8f);p1.leftMargin=dp(6);a.addView(plan,p1);LinearLayout.LayoutParams p2=new LinearLayout.LayoutParams(0,dp(52),.9f);p2.leftMargin=dp(6);a.addView(lab,p2);card.addView(a);
         TextView details=pill(getString(R.string.routes_view),SURFACE2);details.setOnClickListener(v->{detailFile=f;showTab("detail",true);});LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-1,dp(52));dl.topMargin=dp(8);card.addView(details,dl);
@@ -278,7 +315,7 @@ public class RoutixActivity extends AppCompatActivity {
 
     private void moveRouteDialog(File f){List<String> folders=folderStore.folders();String[] labels=new String[folders.size()+1];labels[0]=getString(R.string.routes_no_folder);for(int i=0;i<folders.size();i++)labels[i+1]=""+folders.get(i);new RoutixDialogs.Builder(this).setTitle("Déplacer "+store.displayName(f)).setItems(labels,(d,w)->{folderStore.move(f,w==0?RouteFolderStore.ROOT:folders.get(w-1));showTab("routes",false);}).show();}
     private void rename(File f){EditText e=new EditText(this);e.setText(store.displayName(f));e.setSingleLine(true);new RoutixDialogs.Builder(this).setTitle(getString(R.string.routes_name)).setMessage(getString(R.string.routes_rename_file_warning)).setView(e).setNegativeButton(getString(R.string.action_cancel),null).setPositiveButton(getString(R.string.action_save),(d,w)->{String old=f.getName();File renamed=store.rename(f,e.getText().toString());if(renamed!=null)folderStore.migrateFileName(old,renamed.getName());toast(renamed==null?getString(R.string.routes_rename_failed):getString(R.string.routes_renamed));showTab("routes",false);}).show();}
-    private void confirmDelete(File f){new RoutixDialogs.Builder(this).setTitle(getString(R.string.routes_delete_question)).setMessage(getString(R.string.routes_delete_warning)).setNegativeButton(getString(R.string.action_cancel),null).setPositiveButton(getString(R.string.action_delete),(a,b)->{folderStore.forget(f);boolean ok=store.delete(f);toast(ok?getString(R.string.routes_deleted):getString(R.string.routes_delete_failed));showTab("routes",false);}).show();}
+    private void confirmDelete(File f){new RoutixDialogs.Builder(this).setTitle(getString(R.string.routes_delete_question)).setMessage(getString(R.string.routes_delete_warning)).setNegativeButton(getString(R.string.action_cancel),null).setPositiveButton(getString(R.string.action_delete),(a,b)->{boolean ok=store.delete(f);if(ok)folderStore.forget(f);toast(ok?getString(R.string.routes_deleted):getString(R.string.routes_delete_failed));showTab("routes",false);}).show();}
     private void shareConverted(File file,boolean kml){
         new Thread(()->{
             try{
@@ -402,7 +439,7 @@ public class RoutixActivity extends AppCompatActivity {
     private void exportDiagnostics(){try{File f=DiagnosticLog.export(this);Intent i=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM,FileProvider.getUriForFile(this,getPackageName()+".files",f)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Rapport Routix"));}catch(Exception e){DiagnosticLog.error("export diagnostic",e);toast("Export impossible");}}
 
     private View colorSettingRow(String title,String key,int def,Runnable changed){
-        int value=prefs.getInt(key,def);LinearLayout row=settingsRow(title,String.format(Locale.US,"#%06X",0xFFFFFF&value));TextView swatch=new TextView(this);swatch.setBackground(surface(value,99));row.addView(swatch,0,new LinearLayout.LayoutParams(dp(28),dp(28)));row.setOnClickListener(v->{press(v);showColorPicker(title,key,value,changed);});return row;
+        int value=prefs.getInt(key,def);LinearLayout row=settingsRow(title,String.format(Locale.US,"#%06X",0xFFFFFF&value));TextView swatch=new TextView(this);swatch.setBackground(surface(value,99));LinearLayout.LayoutParams swatchLp=new LinearLayout.LayoutParams(dp(28),dp(28));swatchLp.rightMargin=dp(12);row.addView(swatch,0,swatchLp);row.setOnClickListener(v->{press(v);showColorPicker(title,key,value,changed);});return row;
     }
     private void showColorPicker(String title,String key,int current,Runnable changed){
         int[] palette={MAUVE,BLUE,GREEN,PEACH,TEAL,PINK,YELLOW,RED,theme.rosewater,theme.flamingo,theme.sky,theme.lavender};
@@ -417,9 +454,50 @@ public class RoutixActivity extends AppCompatActivity {
 
     private View choiceRow(String title,String key,int[] values,String[] labels,int def,Runnable changed){int cur=prefs.getInt(key,def),idx=0;for(int i=0;i<values.length;i++)if(values[i]==cur){idx=i;break;}final int selected=idx;LinearLayout row=settingsRow(title,labels[selected]);row.setOnClickListener(v->new RoutixDialogs.Builder(this).setTitle(title).setSingleChoiceItems(labels,selected,(d,w)->{prefs.edit().putInt(key,values[w]).apply();d.dismiss();if(changed!=null)changed.run();showTab("settings",false);}).show());return row;}
     private View stringChoiceRow(String title,String key,String[] values,String[] labels,String def,Runnable changed){String cur=prefs.getString(key,def);int found=0;for(int i=0;i<values.length;i++)if(values[i].equals(cur)){found=i;break;}final int idx=found;LinearLayout row=settingsRow(title,labels[idx]);row.setOnClickListener(v->new RoutixDialogs.Builder(this).setTitle(title).setSingleChoiceItems(labels,idx,(d,w)->{prefs.edit().putString(key,values[w]).apply();d.dismiss();if(changed!=null)changed.run();showTab("settings",false);}).show());return row;}
-    private LinearLayout settingsRow(String title,String value){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(12),dp(12),dp(12));row.setBackground(surface(SURFACE,20));LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);tx.addView(text(title,14,Typeface.BOLD,TEXT));tx.addView(text(value,11,Typeface.NORMAL,MUTED));row.addView(tx,new LinearLayout.LayoutParams(0,-2,1));TextView arrow=text("",18,Typeface.BOLD,MUTED);TerrainIcon chevron=new TerrainIcon("chevron",MUTED);chevron.setBounds(0,0,dp(18),dp(18));arrow.setCompoundDrawables(chevron,null,null,null);arrow.setGravity(Gravity.CENTER);row.addView(arrow,new LinearLayout.LayoutParams(dp(28),dp(34)));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(8);row.setLayoutParams(lp);return row;}
-    private View toggleRow(String title,String sub,String key,boolean def,Runnable changed){LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(12),dp(12),dp(12));row.setBackground(surface(SURFACE,20));LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);tx.addView(text(title,14,Typeface.BOLD,TEXT));tx.addView(text(sub,11,Typeface.NORMAL,MUTED));row.addView(tx,new LinearLayout.LayoutParams(0,-2,1));TextView state=toggleCapsule(prefs.getBoolean(key,def));row.addView(state,new LinearLayout.LayoutParams(dp(54),dp(32)));row.setOnClickListener(v->{press(v);boolean on=!prefs.getBoolean(key,def);prefs.edit().putBoolean(key,on).apply();state.setText(on?"ON":"OFF");state.setTextColor(on?theme.onAccent():MUTED);state.setBackground(surface(on?accent:SURFACE2,16));if(changed!=null)changed.run();});LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(8);row.setLayoutParams(lp);return row;}
-    private TextView toggleCapsule(boolean on){TextView t=text(on?"ON":"OFF",10,Typeface.BOLD,on?theme.onAccent():MUTED);t.setGravity(Gravity.CENTER);t.setBackground(surface(on?accent:SURFACE2,16));return t;}
+    private LinearLayout settingsRow(String title,String value){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(68));row.setPadding(dp(17),dp(13),dp(12),dp(13));
+        row.setBackground(RoutixTheme.touch(theme,SURFACE,20,getResources().getDisplayMetrics().density));
+        LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);
+        TextView heading=text(title,14,Typeface.BOLD,TEXT);heading.setMaxLines(2);
+        tx.addView(heading);
+        if(value!=null&&!value.isEmpty()){
+            TextView summary=text(value,11,Typeface.NORMAL,MUTED);summary.setMaxLines(3);
+            summary.setPadding(0,dp(3),0,0);tx.addView(summary);
+        }
+        row.addView(tx,new LinearLayout.LayoutParams(0,-2,1));
+        TextView arrow=text("",18,Typeface.BOLD,MUTED);
+        TerrainIcon chevron=new TerrainIcon("chevron",MUTED);chevron.setBounds(0,0,dp(18),dp(18));
+        arrow.setCompoundDrawables(chevron,null,null,null);arrow.setGravity(Gravity.CENTER);
+        row.addView(arrow,new LinearLayout.LayoutParams(dp(28),dp(34)));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(9);
+        row.setLayoutParams(lp);row.setContentDescription(title+" : "+(value==null?"":value));
+        return row;
+    }
+    private View toggleRow(String title,String sub,String key,boolean def,Runnable changed){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(70));row.setPadding(dp(17),dp(12),dp(14),dp(12));
+        row.setBackground(RoutixTheme.touch(theme,SURFACE,20,getResources().getDisplayMetrics().density));
+        LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);
+        TextView heading=text(title,14,Typeface.BOLD,TEXT);heading.setMaxLines(2);tx.addView(heading);
+        if(sub!=null&&!sub.isEmpty()){TextView summary=text(sub,11,Typeface.NORMAL,MUTED);summary.setMaxLines(3);summary.setPadding(0,dp(4),0,0);tx.addView(summary);}
+        LinearLayout.LayoutParams info=new LinearLayout.LayoutParams(0,-2,1);info.rightMargin=dp(9);row.addView(tx,info);
+        boolean enabled=prefs.getBoolean(key,def);
+        TextView state=toggleCapsule(enabled);row.addView(state,new LinearLayout.LayoutParams(dp(56),dp(34)));
+        row.setContentDescription(title+" : "+(enabled?"ON":"OFF"));
+        row.setOnClickListener(v->{press(v);boolean on=!prefs.getBoolean(key,def);
+            prefs.edit().putBoolean(key,on).apply();state.setText(on?"ON":"OFF");
+            state.setTextColor(on?theme.onAccent():MUTED);
+            state.setBackground(surface(on?accent:SURFACE2,16));
+            row.setContentDescription(title+" : "+(on?"ON":"OFF"));
+            if(changed!=null)changed.run();
+        });
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(9);row.setLayoutParams(lp);return row;
+    }
+    private TextView toggleCapsule(boolean on){
+        TextView t=text(on?"ON":"OFF",11,Typeface.BOLD,on?theme.onAccent():MUTED);
+        t.setGravity(Gravity.CENTER);t.setBackground(surface(on?accent:SURFACE2,16));return t;
+    }
 
     private void startRecording(){if(tracker==null||!tracker.beginRecording()){ensureLocation();toast(getString(R.string.record_wait_location));return;}successPulse(recordMain);toast(getString(R.string.record_started));showTab("record",true);}
     private void finishRecording(){if(tracker==null||tracker.points.size()<2){toast(getString(R.string.record_not_enough));return;}toast(getString(R.string.record_saving));tracker.finish(f->{if(isDestroyed())return;toast(f==null?getString(R.string.record_save_failed):getString(R.string.record_saved));showTab(f==null?"record":"routes",true);});}
@@ -592,20 +670,72 @@ public class RoutixActivity extends AppCompatActivity {
         if(!recoveryOffered){recoveryOffered=true;if(!recording&&store.hasDraft())offerDraftRecovery();}
     }
 
-    private ScrollView scrollPanel(View panel){ScrollView scroll=new ScrollView(this);scroll.addView(panel);return scroll;}
-    private LinearLayout page(String title,String sub){LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);int pad=20;p.setPadding(dp(pad),dp(prefs.getBoolean("compact_ui",false)?12:18),dp(pad),dp(28));p.addView(text(title,30,Typeface.BOLD,TEXT));TextView s=text(sub,12,Typeface.NORMAL,MUTED);s.setPadding(0,dp(4),0,dp(14));p.addView(s);return p;}
-    private TextView section(String s){TextView t=text(s.toUpperCase(Locale.ROOT),10,Typeface.BOLD,accent);t.setPadding(0,dp(20),0,dp(8));return t;}
-    private TextView text(String s,float size,int style,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(Math.max(12,size));t.setTextColor(theme.readable(color));t.setTypeface(Typeface.create("sans-serif",style));t.setIncludeFontPadding(false);t.setLineSpacing(dp(2),1);return t;}
-    private TextView pill(String s,int color){TextView t=text(s,13,Typeface.BOLD,(color==accent||color==GREEN||color==PEACH||color==RED)?RoutixTheme.ink(color):TEXT);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(52));t.setPadding(dp(8),dp(8),dp(8),dp(8));t.setMaxLines(2);androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(t,11,15,1,android.util.TypedValue.COMPLEX_UNIT_SP);t.setBackground(surface(color,12));return t;}
-    private TextView compactMetric(String value,String label){TextView t=text(value+"  "+label,12,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setSingleLine(true);t.setBackground(surface(SURFACE2,14));return t;}
-    private TextView metric(String value,String label){TextView t=text(value+"\n"+label,13,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setBackground(surface(SURFACE,20));return t;}
-    private TextView bigMetric(String value,String label,int color){TextView t=text(value+"\n"+label,18,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setBackground(surface(theme.tint(color),24));return t;}
-    private TextView icon(String s){TextView t=text("",19,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setPadding(dp(13),dp(13),dp(13),dp(13));String kind="◎".equals(s)?"locate":("↑".equals(s)||"N".equals(s))?"north":"more";TerrainIcon glyph=new TerrainIcon(kind,TEXT);glyph.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(glyph,null,null,null);t.setBackground(surface(SURFACE2,12));return t;}
-
-    private TextView infoCard(String title,String body){TextView t=text(title+"\n"+body,12,Typeface.NORMAL,MUTED);t.setPadding(dp(14),dp(12),dp(14),dp(12));t.setBackground(surface(SURFACE,20));return t;}
+    private ScrollView scrollPanel(View panel){
+        ScrollView scroll=new ScrollView(this);scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(panel);return scroll;
+    }
+    private LinearLayout page(String title,String sub){
+        LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);
+        int pad=prefs.getBoolean("compact_ui",false)?16:20;
+        p.setPadding(dp(pad),dp(17),dp(pad),dp(30));
+        TextView eyebrow=text("ROUTIX   /   NAVIGATION",10,Typeface.BOLD,accent);
+        eyebrow.setLetterSpacing(.14f);
+        LinearLayout.LayoutParams el=new LinearLayout.LayoutParams(-1,-2);el.bottomMargin=dp(7);
+        p.addView(eyebrow,el);
+        TextView heading=text(title,29,Typeface.BOLD,TEXT);heading.setLetterSpacing(-.025f);p.addView(heading);
+        if(sub!=null&&!sub.trim().isEmpty()){
+            TextView summary=text(sub,12,Typeface.NORMAL,MUTED);summary.setPadding(0,dp(5),0,0);p.addView(summary);
+        }
+        p.addView(new View(this),new LinearLayout.LayoutParams(-1,dp(14)));
+        return p;
+    }
+    private TextView section(String s){
+        TextView t=text(s.toUpperCase(Locale.ROOT),11,Typeface.BOLD,accent);
+        t.setLetterSpacing(.10f);t.setPadding(dp(3),dp(19),0,dp(10));return t;
+    }
+    private TextView text(String s,float size,int style,int color){
+        TextView t=new TextView(this);t.setText(s);t.setTextSize(Math.max(11,size));
+        t.setTextColor(theme.readable(color));
+        t.setTypeface(Typeface.create(style==Typeface.BOLD?"sans-serif-medium":"sans-serif",style));
+        t.setIncludeFontPadding(false);t.setLineSpacing(dp(2),1.04f);return t;
+    }
+    private TextView pill(String s,int color){
+        TextView t=text(s,13,Typeface.BOLD,(color==accent||color==GREEN||color==PEACH||color==RED)?RoutixTheme.ink(color):TEXT);
+        t.setGravity(Gravity.CENTER);t.setMinHeight(dp(52));t.setPadding(dp(10),dp(9),dp(10),dp(9));t.setMaxLines(2);
+        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(t,11,14,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+        t.setBackground(RoutixTheme.touch(theme,color,16,getResources().getDisplayMetrics().density));return t;
+    }
+    private TextView compactMetric(String value,String label){
+        TextView t=text(value+"  "+label,12,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setSingleLine(true);t.setBackground(surface(SURFACE2,16));return t;
+    }
+    private TextView metric(String value,String label){
+        TextView t=text(value+"\n"+label,14,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setPadding(dp(4),dp(12),dp(4),dp(12));t.setBackground(surface(SURFACE,20));return t;
+    }
+    private TextView bigMetric(String value,String label,int color){
+        TextView t=text(value+"\n"+label,18,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setPadding(dp(5),dp(9),dp(5),dp(9));t.setBackground(surface(theme.tint(color),22));return t;
+    }
+    private TextView icon(String s){
+        TextView t=text("",19,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setPadding(dp(11),dp(11),dp(11),dp(11));
+        String kind="◎".equals(s)?"locate":("↑".equals(s)||"N".equals(s))?"north":("star".equals(s)?"star":"more");
+        TerrainIcon glyph=new TerrainIcon(kind,TEXT);glyph.setBounds(0,0,dp(22),dp(22));
+        t.setCompoundDrawables(glyph,null,null,null);
+        t.setBackground(RoutixTheme.touch(theme,SURFACE2,16,getResources().getDisplayMetrics().density));return t;
+    }
+    private TextView infoCard(String title,String body){
+        TextView t=text(title+"\n"+body,13,Typeface.NORMAL,MUTED);
+        android.text.SpannableString span=new android.text.SpannableString(title+"\n"+body);
+        span.setSpan(new android.text.style.ForegroundColorSpan(TEXT),0,title.length(),0);
+        span.setSpan(new android.text.style.StyleSpan(Typeface.BOLD),0,title.length(),0);
+        span.setSpan(new android.text.style.RelativeSizeSpan(1.14f),0,title.length(),0);
+        t.setText(span);t.setPadding(dp(16),dp(15),dp(16),dp(15));t.setBackground(surface(SURFACE,22));return t;
+    }
     private View stage(String number,String title,String sub,int color){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(12),dp(10),dp(12),dp(10));r.setBackground(surface(SURFACE,18));TextView n=text(number,12,Typeface.BOLD,color);n.setGravity(Gravity.CENTER);n.setBackground(surface(SURFACE2,14));r.addView(n,new LinearLayout.LayoutParams(dp(42),dp(42)));LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);tx.setPadding(dp(11),0,0,0);tx.addView(text(title,13,Typeface.BOLD,TEXT));tx.addView(text(sub,11,Typeface.NORMAL,MUTED));r.addView(tx,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(7);r.setLayoutParams(lp);return r;}
     private View summaryStat(String label,String value){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setGravity(Gravity.CENTER);c.addView(text(value,13,Typeface.BOLD,TEXT));c.addView(text(label,9,Typeface.BOLD,MUTED));return c;}
-    private GradientDrawable surface(int color,float radius){return RoutixTheme.surface(theme,color,radius>=90?99:radius<=16?12:22,getResources().getDisplayMetrics().density);}
+    private GradientDrawable surface(int color,float radius){return RoutixTheme.surface(theme,color,Math.round(radius),getResources().getDisplayMetrics().density);}
 
     private void press(View v){if(v==null)return;if(prefs.getBoolean("haptics",true))v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);if(RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true)))v.animate().scaleX(.94f).scaleY(.94f).setDuration(70).withEndAction(()->v.animate().scaleX(1).scaleY(1).setDuration(150).start()).start();}
     private int animDuration(){return prefs.getInt("anim_speed",220);}

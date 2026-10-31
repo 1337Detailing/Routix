@@ -15,6 +15,7 @@ final class TerrainIcon extends Drawable {
             case "chevron":canvas.drawLine(9,5,16,12,paint);canvas.drawLine(16,12,9,19,paint);break;
             case "north":Path n=new Path();n.moveTo(5,20);n.lineTo(12,3);n.lineTo(19,20);n.lineTo(12,16);n.close();canvas.drawPath(n,paint);break;
             case "locate":canvas.drawCircle(12,12,6,paint);canvas.drawCircle(12,12,2,paint);canvas.drawLine(12,2,12,5,paint);canvas.drawLine(12,19,12,22,paint);canvas.drawLine(2,12,5,12,paint);canvas.drawLine(19,12,22,12,paint);break;
+            case "search":canvas.drawCircle(10.5f,10.5f,6.3f,paint);canvas.drawLine(15.4f,15.4f,21,21,paint);break;
             case "star":Path star=new Path();for(int i=0;i<10;i++){double a=-Math.PI/2+i*Math.PI/5;float r=i%2==0?9:4;float x=12+(float)Math.cos(a)*r,y=12+(float)Math.sin(a)*r;if(i==0)star.moveTo(x,y);else star.lineTo(x,y);}star.close();canvas.drawPath(star,paint);break;
             default:for(int x=5;x<=19;x+=7)canvas.drawCircle(x,12,1.5f,paint);
         }canvas.restore();}

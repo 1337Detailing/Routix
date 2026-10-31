@@ -6,13 +6,13 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import androidx.core.graphics.ColorUtils;
 
-/** Shared matte-black and sand design tokens for every native screen. */
+/** Premium graphite UI tokens shared by all native Routix screens. */
 final class RoutixTheme {
-    static final int BLACK=Color.rgb(10,10,10), SAND=Color.rgb(216,196,138);
-    static final int CARD=Color.rgb(21,21,19), CARD_HIGH=Color.rgb(28,28,25);
-    static final int INK=Color.rgb(235,233,227), MUTED=Color.rgb(170,169,161);
-    static final int OUTLINE=Color.rgb(56,56,49);
-    static final int CORNER=16, CORNER_LARGE=24, TAP_MIN=48;
+    static final int BLACK=Color.rgb(11,11,17), SAND=Color.rgb(189,167,255); // legacy name preserves source compatibility
+    static final int CARD=Color.rgb(23,23,32), CARD_HIGH=Color.rgb(34,33,45);
+    static final int INK=Color.rgb(246,244,251), MUTED=Color.rgb(183,179,196);
+    static final int OUTLINE=Color.rgb(56,54,73);
+    static final int CORNER=18, CORNER_LARGE=26, TAP_MIN=48;
     static final int MOTION_SHORT=180, MOTION_MEDIUM=300;
     static final class Tokens {
         final String flavor;
@@ -20,25 +20,25 @@ final class RoutixTheme {
         final int base,mantle,crust,surface0,surface1,surface2,overlay0,overlay1,overlay2,text,subtext1,subtext0;
         final int rosewater,flamingo,pink,mauve,red,maroon,peach,yellow,green,teal,sky,sapphire,blue,lavender,accent;
         Tokens(boolean light) {
-            flavor=light?"map-light":"sand";
-            base=light?Color.rgb(245,242,233):BLACK;
-            mantle=light?Color.rgb(236,232,221):CARD;
-            crust=light?Color.rgb(249,247,241):Color.rgb(5,5,5);
-            surface0=light?Color.rgb(222,217,205):CARD_HIGH;
-            surface1=light?Color.rgb(205,200,190):OUTLINE;
-            surface2=light?Color.rgb(194,189,180):Color.rgb(47,47,42);
-            overlay0=light?Color.rgb(172,169,161):Color.rgb(74,74,67);
-            overlay1=light?Color.rgb(145,143,136):Color.rgb(102,101,92);
-            overlay2=light?Color.rgb(113,113,107):Color.rgb(133,132,126);
-            text=light?Color.rgb(31,30,27):INK;
-            subtext1=light?Color.rgb(77,75,69):Color.rgb(197,194,184);
-            subtext0=light?Color.rgb(91,88,81):MUTED;
-            rosewater=Color.rgb(222,192,170);flamingo=rosewater;
-            pink=Color.rgb(199,159,159);mauve=SAND;
-            red=Color.rgb(224,121,116);maroon=red;
-            peach=Color.rgb(223,174,120);yellow=SAND;
-            green=Color.rgb(150,200,159);teal=Color.rgb(139,187,175);
-            sky=Color.rgb(151,184,198);sapphire=SAND;blue=sky;lavender=SAND;
+            flavor=light?"map-light":"sand"; // legacy persisted value; visible design is graphite
+            base=light?Color.rgb(246,246,250):BLACK;
+            mantle=light?Color.rgb(235,235,243):CARD;
+            crust=light?Color.rgb(252,251,255):Color.rgb(6,6,10);
+            surface0=light?Color.rgb(224,223,236):CARD_HIGH;
+            surface1=light?Color.rgb(208,205,224):OUTLINE;
+            surface2=light?Color.rgb(195,191,211):Color.rgb(45,43,59);
+            overlay0=light?Color.rgb(170,167,188):Color.rgb(80,76,101);
+            overlay1=light?Color.rgb(144,139,165):Color.rgb(108,103,128);
+            overlay2=light?Color.rgb(110,107,133):Color.rgb(146,140,164);
+            text=light?Color.rgb(32,28,47):INK;
+            subtext1=light?Color.rgb(83,79,106):Color.rgb(210,206,222);
+            subtext0=light?Color.rgb(102,97,124):MUTED;
+            rosewater=Color.rgb(236,201,221);flamingo=rosewater;
+            pink=Color.rgb(226,172,218);mauve=SAND;
+            red=Color.rgb(241,137,151);maroon=red;
+            peach=Color.rgb(241,191,146);yellow=Color.rgb(243,208,146);
+            green=Color.rgb(152,223,183);teal=Color.rgb(142,214,210);
+            sky=Color.rgb(157,190,247);sapphire=sky;blue=sky;lavender=SAND;
             accent=SAND;
             background=base;surface=mantle;content=text;secondaryContent=subtext0;
             success=green;error=red;warning=peach;info=blue;navigation=SAND;
@@ -57,8 +57,8 @@ final class RoutixTheme {
     static Tokens from(Context context){return from(context.getSharedPreferences("routix",0));}
     static Tokens lightMap(){return new Tokens(true);}
     static Tokens flavor(String flavor,String accent){return "map-light".equals(flavor)?lightMap():new Tokens(false);}
-    static String[] flavors(){return new String[]{"Sand"};}
-    static String[] accents(){return new String[]{"Sand"};}
+    static String[] flavors(){return new String[]{"Graphite"};}
+    static String[] accents(){return new String[]{"Violet"};}
     static void setFlavor(SharedPreferences p,String flavor){p.edit().remove("theme_flavor").apply();}
     static void setAccent(SharedPreferences p,String accent){p.edit().remove("accent_name").apply();}
     static int ink(int color){return ColorUtils.calculateContrast(Color.BLACK,color)>=4.5?Color.BLACK:Color.WHITE;}
@@ -68,6 +68,20 @@ final class RoutixTheme {
         if(color==t.base||color==t.mantle||color==t.surface0)
             d.setStroke(Math.max(1,Math.round(density)),t.surface1);
         return d;
+    }
+    /** Selected navigation surfaces remain subtle; the tint is not a filled CTA. */
+    static GradientDrawable selected(Tokens t, float density) {
+        GradientDrawable d=new GradientDrawable();
+        d.setColor(ColorUtils.blendARGB(t.mantle,t.accent,.16f));
+        d.setCornerRadius(16f*density);
+        d.setStroke(Math.max(1,Math.round(density)),ColorUtils.blendARGB(t.mantle,t.accent,.42f));
+        return d;
+    }
+    static android.graphics.drawable.RippleDrawable touch(Tokens t,int color,int radiusDp,float density){
+        int ripple=ColorUtils.setAlphaComponent(t.accent,56);
+        return new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(ripple),
+            surface(t,color,radiusDp,density),null);
     }
     static boolean motion(SharedPreferences p){
         return p.getBoolean("animations",true)&&android.animation.ValueAnimator.areAnimatorsEnabled();

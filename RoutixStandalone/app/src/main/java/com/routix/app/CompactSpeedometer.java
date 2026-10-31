@@ -47,9 +47,9 @@ final class CompactSpeedometer extends View {
     @Override protected void onDetachedFromWindow(){removeCallbacks(expire);super.onDetachedFromWindow();}
     @Override protected void onDraw(Canvas canvas){
         super.onDraw(canvas);float density=getResources().getDisplayMetrics().density;
-        paint.setStyle(Paint.Style.FILL);paint.setTextAlign(Paint.Align.LEFT);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));paint.setTextSize(30*density);paint.setColor(theme.text);
+        paint.setStyle(Paint.Style.FILL);paint.setTextAlign(Paint.Align.LEFT);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));paint.setTextSize(29*density);paint.setColor(valid?theme.accent:theme.text);
         String value=valid?String.valueOf(Math.round(speed)):"—";canvas.drawText(value,4*density,34*density,paint);
-        float x=Math.max(56*density,paint.measureText(value)+10*density);paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));paint.setTextSize(12*density);paint.setColor(theme.muted());canvas.drawText("km/h",x,25*density,paint);
+        float x=Math.max(56*density,paint.measureText(value)+10*density);paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));paint.setTextSize(12*density);paint.setColor(theme.subtext1);canvas.drawText("km/h",x,25*density,paint);
         paint.setTextSize(10*density);paint.setColor(valid?theme.readable(theme.green):theme.muted());canvas.drawText(getResources().getString(valid?R.string.speed_gps_active:R.string.speed_gps_waiting),x,40*density,paint);
     }
 }
