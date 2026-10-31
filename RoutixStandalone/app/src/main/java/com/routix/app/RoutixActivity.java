@@ -75,6 +75,8 @@ public class RoutixActivity extends AppCompatActivity {
     private float nextActionDistance=Float.MAX_VALUE;
     private TextView recordMain,recordStatus,recordDistance,recordPoints,recordEvents,reverseButton,twoSidesButton,pauseButton,guideCue,guideDistance,guideProgress;
     private File detailFile;
+    private boolean recordSheetExpanded;
+    private float recordSheetDownY;
     private GuidanceEngine guidance; private RouteStore.Summary guidingRoute;
 
     @Override protected void onCreate(Bundle state){
@@ -83,7 +85,7 @@ public class RoutixActivity extends AppCompatActivity {
         Configuration.getInstance().setCacheMapTileCount((short)64);Configuration.getInstance().setTileFileSystemCacheMaxBytes(64L*1024*1024);Configuration.getInstance().setTileFileSystemCacheTrimBytes(48L*1024*1024);Configuration.getInstance().setUserAgentValue(getPackageName()+"/2.1 Routix");Configuration.getInstance().setOsmdroidBasePath(new File(getCacheDir(),"osmdroid"));Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(),"osmdroid/tiles"));
         root=new FrameLayout(this);root.setBackgroundColor(BG);buildMap();topBar=buildTopBar();contentHost=new LinearLayout(this);contentHost.setOrientation(LinearLayout.VERTICAL);dock=buildDock();root.addView(topBar);root.addView(contentHost);root.addView(dock);setContentView(root);
         ViewCompat.setOnApplyWindowInsetsListener(root,(v,in)->{androidx.core.graphics.Insets b=in.getInsets(WindowInsetsCompat.Type.systemBars()|WindowInsetsCompat.Type.displayCutout());systemTop=b.top;systemBottom=b.bottom;positionChrome();return in;});ViewCompat.requestApplyInsets(root);
-        if(state!=null&&state.getString("detail_file")!=null)detailFile=new File(store.routesDir(),new File(state.getString("detail_file")).getName());showTab(state==null?"map":state.getString("workspace","map"),false);ensureLocation();applyRuntimePrefs();new Thread(()->{store.restoreBackups();runOnUiThread(()->{if(!isDestroyed()&&"routes".equals(selectedTab))showTab("routes",false);});},"restore-backups").start();
+        if(state!=null)recordSheetExpanded=state.getBoolean("record_sheet_expanded",false);if(state!=null&&state.getString("detail_file")!=null)detailFile=new File(store.routesDir(),new File(state.getString("detail_file")).getName());showTab(state==null?"map":state.getString("workspace","map"),false);ensureLocation();applyRuntimePrefs();new Thread(()->{store.restoreBackups();runOnUiThread(()->{if(!isDestroyed()&&"routes".equals(selectedTab))showTab("routes",false);});},"restore-backups").start();
     }
 
     private void applyThemeTokens(){theme=RoutixTheme.from(this);BG=theme.background;SURFACE=theme.surface;SURFACE2=theme.surface0;TEXT=theme.content;MUTED=theme.secondaryContent;GREEN=theme.success;PEACH=theme.warning;RED=theme.error;MAUVE=theme.mauve;BLUE=theme.blue;PINK=theme.pink;TEAL=theme.teal;YELLOW=theme.yellow;}
@@ -364,13 +366,29 @@ public class RoutixActivity extends AppCompatActivity {
         scroll.setElevation(dp(10));
         LinearLayout p=new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
-        p.setPadding(dp(16),dp(11),dp(16),dp(20));
+        p.setPadding(dp(16),dp(3),dp(16),dp(20));
+        LinearLayout grip=new LinearLayout(this);
+        grip.setGravity(Gravity.CENTER);
+        grip.setMinimumHeight(dp(48));
+        grip.setFocusable(true);
+        grip.setContentDescription("Déployer ou réduire le panneau d'enregistrement");
         View handle=new View(this);
         handle.setBackground(surface(theme.surface1,99));
-        LinearLayout.LayoutParams hl=new LinearLayout.LayoutParams(dp(44),dp(5));
-        hl.gravity=Gravity.CENTER_HORIZONTAL;
-        hl.bottomMargin=dp(14);
-        p.addView(handle,hl);
+        grip.addView(handle,new LinearLayout.LayoutParams(dp(44),dp(5)));
+        grip.setOnClickListener(v->{recordSheetExpanded=!recordSheetExpanded;positionChrome();});
+        grip.setOnTouchListener((v,e)->{
+            if(e.getActionMasked()==MotionEvent.ACTION_DOWN){recordSheetDownY=e.getRawY();return true;}
+            if(e.getActionMasked()==MotionEvent.ACTION_UP){
+                float delta=e.getRawY()-recordSheetDownY;
+                if(Math.abs(delta)>dp(28)){
+                    recordSheetExpanded=delta<0;
+                    positionChrome();
+                }else v.performClick();
+                return true;
+            }
+            return e.getActionMasked()==MotionEvent.ACTION_MOVE;
+        });
+        p.addView(grip,new LinearLayout.LayoutParams(-1,dp(48)));
         LinearLayout heading=new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout names=new LinearLayout(this);
@@ -1250,7 +1268,7 @@ public class RoutixActivity extends AppCompatActivity {
         }else if("record".equals(selectedTab)){
             int screen=root.getHeight()>0?root.getHeight():getResources().getDisplayMetrics().heightPixels;
             int available=Math.max(dp(90),screen-top-topH-bottom-dockH-dp(18));
-            int height=Math.min(dp(406),available);
+            int height=Math.min(dp(recordSheetExpanded?584:332),available);
             FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,height,Gravity.BOTTOM);
             cp.setMargins(dp(10),0,dp(10),bottom+dockH+dp(8));
             contentHost.setLayoutParams(cp);
@@ -1276,7 +1294,7 @@ public class RoutixActivity extends AppCompatActivity {
         }
         super.onBackPressed();
     }
-    @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("workspace",selectedTab);if(detailFile!=null)out.putString("detail_file",detailFile.getName());if(modern!=null)modern.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("workspace",selectedTab);out.putBoolean("record_sheet_expanded",recordSheetExpanded);if(detailFile!=null)out.putString("detail_file",detailFile.getName());if(modern!=null)modern.onSaveInstanceState(out);}
     @Override public void onLowMemory(){super.onLowMemory();if(modern!=null)modern.onLowMemory();if(map!=null)map.getTileProvider().clearTileCache();}
     @Override protected void onDestroy(){guidanceSession++;if(modern!=null)modern.onDestroy();if(map!=null)map.onDetach();super.onDestroy();}
 }
