@@ -27,7 +27,7 @@ public final class OnboardingActivity extends AppCompatActivity {
         prefs=getSharedPreferences("routix",MODE_PRIVATE);
         setTheme(RoutixTheme.activityStyle(prefs));
         super.onCreate(savedState);
-        theme=RoutixTheme.from(prefs);
+        theme=RoutixTheme.from(this);
         if(prefs.getBoolean("onboarding_complete",false)&&hasLocation()){launchApp();return;}
         RoutixTheme.systemBars(this,theme);
         ScrollView scroll=new ScrollView(this);
@@ -36,21 +36,21 @@ public final class OnboardingActivity extends AppCompatActivity {
         LinearLayout page=new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setGravity(Gravity.CENTER_VERTICAL);
-        page.setPadding(dp(24),dp(30),dp(24),dp(26));
+        page.setPadding(dp(26),dp(30),dp(26),dp(30));
 
         ImageView brand=new ImageView(this);
         brand.setImageResource(R.drawable.ic_routix);
         brand.setContentDescription(getString(R.string.app_name));
-        LinearLayout.LayoutParams logo=new LinearLayout.LayoutParams(dp(88),dp(88));
+        LinearLayout.LayoutParams logo=new LinearLayout.LayoutParams(dp(100),dp(100));
         logo.gravity=Gravity.CENTER_HORIZONTAL;
         page.addView(brand,logo);
 
-        TextView title=label(getString(R.string.app_name),28,Typeface.BOLD,theme.text);
+        TextView title=label(getString(R.string.app_name),34,Typeface.BOLD,theme.text);
         title.setGravity(Gravity.CENTER);
         add(page,title,18);
 
         TextView permission=label(getString(R.string.permission_location_title),21,Typeface.BOLD,theme.text);
-        add(page,permission,40);
+        add(page,permission,34);
         TextView detail=label(getString(R.string.permission_location_explanation),15,Typeface.NORMAL,theme.muted());
         add(page,detail,8);
         status=label("",13,Typeface.NORMAL,theme.muted());
@@ -59,12 +59,12 @@ public final class OnboardingActivity extends AppCompatActivity {
         action=label(getString(R.string.permission_continue),16,Typeface.BOLD,theme.onAccent());
         action.setGravity(Gravity.CENTER);
         action.setPadding(dp(14),dp(14),dp(14),dp(14));
-        action.setMinHeight(dp(56));
+        action.setMinHeight(dp(60));
         action.setBackground(new android.graphics.drawable.RippleDrawable(
             android.content.res.ColorStateList.valueOf(theme.tint(theme.accent)),
-            RoutixTheme.surface(theme,theme.accent,12,getResources().getDisplayMetrics().density),null));
+            RoutixTheme.surface(theme,theme.accent,22,getResources().getDisplayMetrics().density),null));
         action.setOnClickListener(v->requestLocation());
-        add(page,action,30);
+        add(page,action,26);
         scroll.addView(page);
         setContentView(scroll);
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(scroll,(v,in)->{
