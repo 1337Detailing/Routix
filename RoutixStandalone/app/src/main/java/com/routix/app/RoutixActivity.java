@@ -486,18 +486,67 @@ public class RoutixActivity extends AppCompatActivity {
         animateCard(card,index);return card;
     }
 
+
     private View routeDetailPage(File file){
-        RouteStore.Summary route=store.parse(file);ScrollView scroll=new ScrollView(this);
-        LinearLayout page=page(store.displayName(file),formatDistance(route.distanceM)+" · "+formatDuration(route.durationMs));
-        TextView back=pill(getString(R.string.routes_all),SURFACE2);back.setOnClickListener(v->showTab("routes",true));page.addView(back,new LinearLayout.LayoutParams(-1,dp(52)));
-        RoutePreviewView preview=new RoutePreviewView(this);preview.setPoints(route.points);LinearLayout.LayoutParams previewLayout=new LinearLayout.LayoutParams(-1,dp(200));previewLayout.topMargin=dp(16);page.addView(preview,previewLayout);
-        page.addView(section(getString(R.string.routes_ready)));TextView start=pill(getString(R.string.routes_guide),accent);start.setOnClickListener(v->startGuidance(route));page.addView(start,new LinearLayout.LayoutParams(-1,dp(58)));
-        menu(page,getString(R.string.routes_plan),route.events.size()+" repères · "+route.points.size()+" points",()->PrintablePlan.open(this,route,store.displayName(file)));menu(page,getString(R.string.routes_improve),getString(R.string.routes_reorder_help),()->improveRoute(file,route));
+        RouteStore.Summary route=store.parse(file);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout p=page(store.displayName(file),formatDistance(route.distanceM)+"  •  "+formatDuration(route.durationMs));
+        TextView back=pill("‹  "+getString(R.string.routes_all),SURFACE2);
+        back.setOnClickListener(v->{press(v);showTab("routes",true);});
+        p.addView(back,new LinearLayout.LayoutParams(-1,dp(50)));
+        RoutePreviewView preview=new RoutePreviewView(this);
+        preview.setPoints(route.points);
+        preview.setClipToOutline(true);
+        preview.setBackground(surface(SURFACE2,24));
+        LinearLayout.LayoutParams previewLp=new LinearLayout.LayoutParams(-1,dp(200));
+        previewLp.topMargin=dp(14);
+        p.addView(preview,previewLp);
+        LinearLayout quick=new LinearLayout(this);
+        LinearLayout.LayoutParams quickLp=new LinearLayout.LayoutParams(-1,dp(58));
+        quickLp.topMargin=dp(12);
+        TextView start=pill(getString(R.string.routes_guide),accent);
+        start.setOnClickListener(v->{press(v);startGuidance(route);});
+        quick.addView(start,new LinearLayout.LayoutParams(0,-1,1.25f));
+        TextView plan=pill(getString(R.string.routes_plan),SURFACE2);
+        plan.setOnClickListener(v->{press(v);PrintablePlan.open(this,route,store.displayName(file));});
+        LinearLayout.LayoutParams planLp=new LinearLayout.LayoutParams(0,-1,1);
+        planLp.leftMargin=dp(9);
+        quick.addView(plan,planLp);
+        p.addView(quick,quickLp);
+        p.addView(section(getString(R.string.routes_ready)));
+        LinearLayout stats=new LinearLayout(this);
+        stats.setPadding(dp(10),dp(14),dp(10),dp(14));
+        stats.setBackground(surface(SURFACE,22));
+        stats.addView(summaryStat(getString(R.string.metric_distance),formatDistance(route.distanceM)),new LinearLayout.LayoutParams(0,-2,1));
+        stats.addView(summaryStat(getString(R.string.metric_duration),formatDuration(route.durationMs)),new LinearLayout.LayoutParams(0,-2,1));
+        stats.addView(summaryStat(getString(R.string.metric_points),String.valueOf(route.points.size())),new LinearLayout.LayoutParams(0,-2,1));
+        stats.addView(summaryStat(getString(R.string.metric_markers),String.valueOf(route.events.size())),new LinearLayout.LayoutParams(0,-2,1));
+        p.addView(stats);
+        p.addView(section(getString(R.string.routes_improve)));
+        menu(p,getString(R.string.routes_improve),getString(R.string.routes_reorder_help),()->improveRoute(file,route));
         StreetPassageStore.Insight insight=new StreetPassageStore(this).read(file.getName());
-        if(insight!=null){page.addView(section("Intelligence de tournée"));LinearLayout intel=new LinearLayout(this);intel.setOrientation(LinearLayout.VERTICAL);intel.setPadding(dp(14),dp(12),dp(14),dp(12));intel.setBackground(surface(SURFACE,20));intel.addView(text(insight.unique+" rues reconnues • "+insight.passages+" passages • "+insight.repeats+" répétition"+(insight.repeats>1?"s":""),13,Typeface.BOLD,TEXT));intel.addView(text(formatDistance(insight.coveredMeters)+" de portions reconnues • "+insight.directedCells+" secteurs directionnels"+(insight.opposite>0?" • "+insight.opposite+" parcourus dans les 2 sens":""),11,Typeface.NORMAL,MUTED));int shown=Math.min(8,insight.streets.size());for(int i=0;i<shown;i++)intel.addView(text(insight.streets.get(i),11,Typeface.NORMAL,MUTED));if(insight.streets.size()>shown)intel.addView(text("+"+(insight.streets.size()-shown)+" autres rues",11,Typeface.BOLD,accent));page.addView(intel);}
-        menu(page,"Dossier",folderStore.folderOf(file).isEmpty()?getString(R.string.routes_no_folder):folderStore.folderOf(file),()->moveRouteDialog(file));
-        menu(page,getString(R.string.action_rename),store.displayName(file),()->rename(file));menu(page,getString(R.string.action_share),"Fichier GPX",()->share(file));
-        menu(page,"Tous les outils","Favoris, duplication, amélioration, GPX Lab et suppression",()->routeMenu(file,route));scroll.addView(page);return scroll;
+        if(insight!=null){
+            p.addView(section("Intelligence de tournée"));
+            LinearLayout intel=new LinearLayout(this);
+            intel.setOrientation(LinearLayout.VERTICAL);
+            intel.setPadding(dp(16),dp(16),dp(16),dp(16));
+            intel.setBackground(surface(SURFACE,22));
+            intel.addView(text(insight.unique+" rues · "+insight.passages+" passages · "+insight.repeats+" répétitions",15,Typeface.BOLD,TEXT));
+            TextView sub=text(formatDistance(insight.coveredMeters)+" parcourus • "+insight.directedCells+" secteurs"+(insight.opposite>0?" • "+insight.opposite+" dans les deux sens":""),12,Typeface.NORMAL,MUTED);
+            sub.setPadding(0,dp(7),0,dp(7));
+            intel.addView(sub);
+            int shown=Math.min(8,insight.streets.size());
+            for(int i=0;i<shown;i++)intel.addView(text("•  "+insight.streets.get(i),12,Typeface.NORMAL,MUTED));
+            if(insight.streets.size()>shown)intel.addView(text("+"+(insight.streets.size()-shown)+" autres rues",12,Typeface.BOLD,accent));
+            p.addView(intel);
+        }
+        p.addView(section("Fichier et classement"));
+        menu(p,"Dossier",folderStore.folderOf(file).isEmpty()?getString(R.string.routes_no_folder):folderStore.folderOf(file),()->moveRouteDialog(file));
+        menu(p,getString(R.string.action_rename),store.displayName(file),()->rename(file));
+        menu(p,getString(R.string.action_share),"GPX",()->share(file));
+        menu(p,"Tous les outils","Favoris · copie · KML / CSV · GPX Lab · suppression",()->routeMenu(file,route));
+        scroll.addView(p);
+        return scroll;
     }
 
     private void routeMenu(File f,RouteStore.Summary s){String[] x={store.isFavorite(f)?getString(R.string.routes_remove_favourite):getString(R.string.routes_add_favourite),getString(R.string.routes_move),getString(R.string.action_rename),getString(R.string.action_duplicate),getString(R.string.routes_improve),"Partager le GPX","Générer le plan","Avancé : GPX Lab",getString(R.string.export_kml),getString(R.string.export_csv),getString(R.string.action_delete)};new RoutixDialogs.Builder(this).setTitle(store.displayName(f)).setMessage(formatDistance(s.distanceM)+" • "+formatDuration(s.durationMs)+" • "+s.points.size()+" points").setItems(x,(d,w)->{if(w==0){store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);}else if(w==1)moveRouteDialog(f);else if(w==2)rename(f);else if(w==3){File copy=store.duplicate(f);if(copy!=null)folderStore.move(copy,folderStore.folderOf(f));showTab("routes",false);}else if(w==4)improveRoute(f,s);else if(w==5)share(f);else if(w==6)PrintablePlan.open(this,s,store.displayName(f));else if(w==7){prefs.edit().putString("gpx_lab_file",f.getName()).apply();showTab("gpxlab",true);}else if(w==8)shareConverted(f,true);else if(w==9)shareConverted(f,false);else confirmDelete(f);}).show();}
@@ -539,11 +588,67 @@ public class RoutixActivity extends AppCompatActivity {
     }
     private void share(File f){try{Uri u=FileProvider.getUriForFile(this,getPackageName()+".files",f);Intent i=new Intent(Intent.ACTION_SEND);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_STREAM,u);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,getString(R.string.routes_share_title)));}catch(Exception e){toast(getString(R.string.routes_share_failed));}}
 
-    private View gpxLabPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_gpx),"");List<File> files=store.routeFiles();if(files.isEmpty()){p.addView(infoCard(getString(R.string.routes_no_gpx),getString(R.string.routes_analysis_no_files)));sv.addView(p);return sv;}File f=files.get(0);String wanted=prefs.getString("gpx_lab_file",null);if(wanted!=null)for(File x:files)if(x.getName().equals(wanted)){f=x;break;}final File selected=f;RouteStore.Summary after=store.parse(selected);int input=prefs.getInt("import_input_"+selected.getName(),after.points.size()),output=prefs.getInt("import_output_"+selected.getName(),after.points.size()),invalid=prefs.getInt("import_invalid_"+selected.getName(),0),dup=prefs.getInt("import_duplicates_"+selected.getName(),0),simp=prefs.getInt("import_simplified_"+selected.getName(),Math.max(0,input-output));boolean matched=prefs.getBoolean("import_matched_"+selected.getName(),false);int confidence=prefs.getInt("import_confidence_"+selected.getName(),matched?0:100),generated=prefs.getInt("import_generated_steps_"+selected.getName(),0);
-        TextView choose=pill("Fichier : "+store.displayName(selected)+"  ▾",SURFACE2);choose.setOnClickListener(v->{String[] labels=new String[files.size()];for(int i=0;i<files.size();i++)labels[i]=store.displayName(files.get(i));new RoutixDialogs.Builder(this).setTitle("GPX à analyser").setItems(labels,(d,w)->{prefs.edit().putString("gpx_lab_file",files.get(w).getName()).apply();showTab("gpxlab",false);}).show();});p.addView(choose,new LinearLayout.LayoutParams(-1,dp(50)));p.addView(section("Avant / après"));LinearLayout compare=new LinearLayout(this);compare.addView(bigMetric(String.valueOf(input),"AVANT\npoints bruts",PEACH),new LinearLayout.LayoutParams(0,dp(112),1));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,dp(112),1);cp.leftMargin=dp(9);compare.addView(bigMetric(String.valueOf(output),"APRÈS\npoints utiles",GREEN),cp);p.addView(compare);TextView delta=infoCard("Transformation","−"+Math.max(0,input-output)+" points • "+invalid+" invalides • "+dup+" doublons • "+simp+" simplifiés");LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-1,-2);dl.topMargin=dp(9);p.addView(delta,dl);p.addView(section("Pipeline"));p.addView(stage("01","Validation GPS",invalid+" points rejetés",invalid>0?PEACH:GREEN));p.addView(stage("02","Déduplication",dup+" points trop proches supprimés",dup>0?BLUE:GREEN));p.addView(stage("03","Simplification conservatrice",simp+" points retirés sans casser les retours",MAUVE));p.addView(stage("04","Recalage routier",matched?("Actif • confiance "+confidence+" % • "+generated+" étapes ajoutées"):"Non appliqué / trace propre conservée",matched?TEAL:MUTED));p.addView(section("Contrôles"));p.addView(toggleRow("Optimiseur GPX","OFF = import brut : aucun point supprimé, simplifié ou recalé. ON = nettoyage et recalage routier.","gpx_match_roads",true,()->{}));sv.addView(p);return sv;
-    }
 
+    private View gpxLabPage(){
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout p=page(getString(R.string.screen_gpx),"Analyse de la qualité des traces GPS");
+        List<File> files=store.routeFiles();
+        if(files.isEmpty()){
+            p.addView(infoCard(getString(R.string.routes_no_gpx),getString(R.string.routes_analysis_no_files)));
+            TextView go=pill(getString(R.string.routes_import),accent);
+            go.setOnClickListener(v->{press(v);importGpx();});
+            LinearLayout.LayoutParams l=new LinearLayout.LayoutParams(-1,dp(56));
+            l.topMargin=dp(14);
+            p.addView(go,l);
+            scroll.addView(p);
+            return scroll;
+        }
+        File f=files.get(0);
+        String wanted=prefs.getString("gpx_lab_file",null);
+        if(wanted!=null)for(File x:files)if(x.getName().equals(wanted)){f=x;break;}
+        final File selected=f;
+        RouteStore.Summary route=store.parse(selected);
+        int input=prefs.getInt("import_input_"+selected.getName(),route.points.size());
+        int output=prefs.getInt("import_output_"+selected.getName(),route.points.size());
+        int invalid=prefs.getInt("import_invalid_"+selected.getName(),0);
+        int duplicates=prefs.getInt("import_duplicates_"+selected.getName(),0);
+        int simplified=prefs.getInt("import_simplified_"+selected.getName(),Math.max(0,input-output));
+        boolean matched=prefs.getBoolean("import_matched_"+selected.getName(),false);
+        int confidence=prefs.getInt("import_confidence_"+selected.getName(),matched?0:100);
+        int generated=prefs.getInt("import_generated_steps_"+selected.getName(),0);
+        TextView choose=pill("◈  "+store.displayName(selected)+"  ⌄",SURFACE2);
+        choose.setContentDescription("Sélectionner un tracé GPX à analyser");
+        choose.setOnClickListener(v->{
+            String[] labels=new String[files.size()];
+            for(int i=0;i<files.size();i++)labels[i]=store.displayName(files.get(i));
+            new RoutixDialogs.Builder(this).setTitle("GPX à analyser").setItems(labels,(d,w)->{
+                prefs.edit().putString("gpx_lab_file",files.get(w).getName()).apply();
+                showTab("gpxlab",false);
+            }).show();
+        });
+        p.addView(choose,new LinearLayout.LayoutParams(-1,dp(54)));
+        p.addView(section("Avant / après"));
+        LinearLayout compare=new LinearLayout(this);
+        compare.addView(bigMetric(String.valueOf(input),"POINTS BRUTS",PEACH),new LinearLayout.LayoutParams(0,dp(105),1));
+        LinearLayout.LayoutParams resultLp=new LinearLayout.LayoutParams(0,dp(105),1);
+        resultLp.leftMargin=dp(10);
+        compare.addView(bigMetric(String.valueOf(output),"POINTS CONSERVÉS",GREEN),resultLp);
+        p.addView(compare);
+        p.addView(infoCard("Nettoyage","−"+Math.max(0,input-output)+" points • "+invalid+" invalides • "+duplicates+" doublons • "+simplified+" simplifiés"));
+        p.addView(section("Étapes du traitement"));
+        p.addView(stage("01","Validation des positions",invalid+" points rejetés",invalid>0?PEACH:GREEN));
+        p.addView(stage("02","Déduplication",duplicates+" points trop proches supprimés",duplicates>0?BLUE:GREEN));
+        p.addView(stage("03","Simplification prudente",simplified+" points retirés sans perte de trajet",MAUVE));
+        p.addView(stage("04","Recalage routier",matched?
+            "Actif · confiance "+confidence+" % · "+generated+" étapes supplémentaires":
+            "Non appliqué : trace d'origine préservée",matched?TEAL:MUTED));
+        p.addView(section("À l'import"));
+        p.addView(toggleRow("Optimiseur GPX",
+            "Désactivé : import brut ; activé : nettoyage et recalage routier",
+            "gpx_match_roads",true,()->{}));
+        scroll.addView(p);
+        return scroll;
+    }
 
     private View morePage(){
         ScrollView sv=new ScrollView(this);
@@ -564,23 +669,47 @@ public class RoutixActivity extends AppCompatActivity {
         return sv;
     }
 
+
     private View statsPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_stats),"");
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout p=page(getString(R.string.screen_stats),"Votre activité en un coup d'œil");
         List<SessionStatsStore.Entry> entries=new SessionStatsStore(prefs).entries();
-        long totalDuration=SessionStatsStore.totalDuration(entries);double totalDistance=SessionStatsStore.totalDistance(entries);
-        double avgKmh=totalDuration>0?(totalDistance/1000d)/(totalDuration/3600000d):0;
-        LinearLayout summary=new LinearLayout(this);summary.setPadding(0,0,0,dp(10));
-        summary.addView(bigMetric(String.valueOf(entries.size()),getString(R.string.metric_routes),BLUE),new LinearLayout.LayoutParams(0,dp(100),1));
-        LinearLayout.LayoutParams sm=new LinearLayout.LayoutParams(0,dp(100),1);sm.leftMargin=dp(8);summary.addView(bigMetric(formatDistance(totalDistance),getString(R.string.metric_distance),GREEN),sm);
-        p.addView(summary);
-        LinearLayout totals=new LinearLayout(this);
-        totals.addView(bigMetric(formatDuration(totalDuration),getString(R.string.metric_duration),MAUVE),new LinearLayout.LayoutParams(0,dp(100),1));
-        LinearLayout.LayoutParams av=new LinearLayout.LayoutParams(0,dp(100),1);av.leftMargin=dp(8);totals.addView(bigMetric(String.format(Locale.getDefault(),"%.1f km/h",avgKmh),getString(R.string.stats_average_short),PEACH),av);p.addView(totals);
+        long duration=SessionStatsStore.totalDuration(entries);
+        double distance=SessionStatsStore.totalDistance(entries);
+        double average=duration>0?(distance/1000d)/(duration/3600000d):0;
+        LinearLayout top=new LinearLayout(this);
+        top.addView(bigMetric(String.valueOf(entries.size()),getString(R.string.metric_routes),BLUE),new LinearLayout.LayoutParams(0,dp(110),1));
+        LinearLayout.LayoutParams topRight=new LinearLayout.LayoutParams(0,dp(110),1);
+        topRight.leftMargin=dp(10);
+        top.addView(bigMetric(formatDistance(distance),getString(R.string.metric_distance),GREEN),topRight);
+        p.addView(top);
+        LinearLayout second=new LinearLayout(this);
+        LinearLayout.LayoutParams rowLp=new LinearLayout.LayoutParams(-1,-2);
+        rowLp.topMargin=dp(10);
+        second.addView(bigMetric(formatDuration(duration),getString(R.string.metric_duration),MAUVE),new LinearLayout.LayoutParams(0,dp(110),1));
+        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(110),1);
+        avgLp.leftMargin=dp(10);
+        second.addView(bigMetric(String.format(Locale.getDefault(),"%.1f km/h",average),getString(R.string.stats_average_short),PEACH),avgLp);
+        p.addView(second,rowLp);
         p.addView(section(getString(R.string.stats_history)));
-        if(entries.isEmpty())p.addView(infoCard(getString(R.string.stats_no_routes),getString(R.string.stats_no_routes_summary)));
-        else for(int i=0;i<Math.min(30,entries.size());i++){SessionStatsStore.Entry e=entries.get(i);String name=e.route.isEmpty()?"Tournée":e.route.replaceFirst("\\.gpx$","");String body=formatDate(e.started)+" • "+formatDistance(e.distanceM)+" • "+formatDuration(e.durationMs);p.addView(infoCard(name,body));}
-        sv.addView(p);return sv;
+        if(entries.isEmpty()){
+            p.addView(infoCard(getString(R.string.stats_no_routes),getString(R.string.stats_no_routes_summary)));
+            TextView start=pill(getString(R.string.routes_new),accent);
+            start.setOnClickListener(v->{press(v);showTab("record",true);});
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(56));lp.topMargin=dp(14);
+            p.addView(start,lp);
+        }else{
+            for(int i=0;i<Math.min(30,entries.size());i++){
+                SessionStatsStore.Entry e=entries.get(i);
+                String name=e.route.isEmpty()?"Tournée":e.route.replaceFirst("\\.gpx$","");
+                String body=formatDate(e.started)+" · "+formatDistance(e.distanceM)+" · "+formatDuration(e.durationMs);
+                p.addView(infoCard(name,body));
+            }
+        }
+        scroll.addView(p);
+        return scroll;
     }
+
     private void menu(LinearLayout p,String title,String subtitle,Runnable action){LinearLayout row=settingsRow(title,subtitle);row.setMinimumHeight(dp(64));row.setOnClickListener(v->action.run());p.addView(row);}
 
     private View settingsPage(){
