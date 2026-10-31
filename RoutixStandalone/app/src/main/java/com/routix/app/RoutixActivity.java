@@ -137,10 +137,9 @@ public class RoutixActivity extends AppCompatActivity {
         LinearLayout.LayoutParams rail=new LinearLayout.LayoutParams(dp(3),dp(29));rail.rightMargin=dp(11);bar.addView(accentRail,rail);
         headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(148),dp(49)));
         gpsStatus=text("GPS",11,Typeface.BOLD,MUTED);gpsStatus.setGravity(Gravity.CENTER);
-        gpsStatus.setContentDescription("État GPS");gpsStatus.setSingleLine(true);
-        gpsStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);gpsStatus.setPadding(dp(7),0,dp(7),0);
-        gpsStatus.setBackground(surface(SURFACE2,12));
-        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,dp(38),1);statusLp.leftMargin=dp(4);
+        gpsStatus.setContentDescription("État GPS");gpsStatus.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);
+        gpsStatus.setPadding(dp(6),0,dp(8),0);
+        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.leftMargin=dp(4);
         bar.addView(gpsStatus,statusLp);return bar;
     }
     private View buildMapControls(){
@@ -440,7 +439,7 @@ public class RoutixActivity extends AppCompatActivity {
     private void exportDiagnostics(){try{File f=DiagnosticLog.export(this);Intent i=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM,FileProvider.getUriForFile(this,getPackageName()+".files",f)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Rapport Routix"));}catch(Exception e){DiagnosticLog.error("export diagnostic",e);toast("Export impossible");}}
 
     private View colorSettingRow(String title,String key,int def,Runnable changed){
-        int value=prefs.getInt(key,def);LinearLayout row=settingsRow(title,String.format(Locale.US,"#%06X",0xFFFFFF&value));TextView swatch=new TextView(this);swatch.setBackground(surface(value,99));row.addView(swatch,0,new LinearLayout.LayoutParams(dp(28),dp(28)));row.setOnClickListener(v->{press(v);showColorPicker(title,key,value,changed);});return row;
+        int value=prefs.getInt(key,def);LinearLayout row=settingsRow(title,String.format(Locale.US,"#%06X",0xFFFFFF&value));TextView swatch=new TextView(this);swatch.setBackground(surface(value,99));LinearLayout.LayoutParams swatchLp=new LinearLayout.LayoutParams(dp(28),dp(28));swatchLp.rightMargin=dp(12);row.addView(swatch,0,swatchLp);row.setOnClickListener(v->{press(v);showColorPicker(title,key,value,changed);});return row;
     }
     private void showColorPicker(String title,String key,int current,Runnable changed){
         int[] palette={MAUVE,BLUE,GREEN,PEACH,TEAL,PINK,YELLOW,RED,theme.rosewater,theme.flamingo,theme.sky,theme.lavender};
