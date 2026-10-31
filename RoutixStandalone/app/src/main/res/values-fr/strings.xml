@@ -193,4 +193,7 @@
     <string name="navigation_gps_imprecise">GPS imprécis • progression conservée</string>
     <string name="tts_in">dans</string>
     <string name="tts_metres">mètres</string>
+    <string name="setting_basemap_style">Style de carte</string>
+    <string name="map_style_routix">Routix (original)</string>
+    <string name="map_style_vela">Vela Maps (en ligne)</string>
 </resources>
