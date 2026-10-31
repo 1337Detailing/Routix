@@ -281,7 +281,7 @@ public class RoutixActivity extends AppCompatActivity {
             LinearLayout.LayoutParams apl=new LinearLayout.LayoutParams(-1,dp(54));
             apl.topMargin=dp(12);
             TextView launch=pill(recording?"Voir l'enregistrement":"●  Enregistrer",accent);
-            launch.setOnClickListener(v->{press(v);if(!recording)startRecording();showTab("record",true);});
+            launch.setOnClickListener(v->{press(v);if(recording)showTab("record",true);else startRecording();});
             TextView routes=pill("Mes tournées",SURFACE2);
             routes.setOnClickListener(v->{press(v);showTab("routes",true);});
             actions.addView(launch,new LinearLayout.LayoutParams(0,-1,1.15f));
@@ -1224,8 +1224,8 @@ public class RoutixActivity extends AppCompatActivity {
         dock.setLayoutParams(dpv);
         if(modern!=null)modern.inset(top+topH);
         if(mapAttribution!=null){
-            FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.BOTTOM|Gravity.START);
-            ml.setMargins(dp(12),0,0,bottom+dockH+dp(8));
+            FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP|Gravity.START);
+            ml.setMargins(dp(12),top+topH+dp(6),0,0);
             mapAttribution.setLayoutParams(ml);
         }
         if("map".equals(selectedTab)){
