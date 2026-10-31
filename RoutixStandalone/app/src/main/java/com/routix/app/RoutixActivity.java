@@ -260,10 +260,20 @@ public class RoutixActivity extends AppCompatActivity {
         LinearLayout floating=new LinearLayout(this);
         floating.setOrientation(LinearLayout.VERTICAL);
         View controls=buildMapControls();
-        LinearLayout.LayoutParams c=new LinearLayout.LayoutParams(-2,dp(54));
-        c.gravity=Gravity.END;
+        LinearLayout tools=new LinearLayout(this);
+        tools.setGravity(Gravity.CENTER_VERTICAL);
+        if(!guiding){
+            TextView search=pill("⌕  "+getString(R.string.routes_search),SURFACE);
+            search.setContentDescription(getString(R.string.routes_search));
+            search.setOnClickListener(v->{press(v);showTab("routes",true);});
+            LinearLayout.LayoutParams searchLp=new LinearLayout.LayoutParams(0,dp(52),1);
+            searchLp.rightMargin=dp(9);
+            tools.addView(search,searchLp);
+        }
+        tools.addView(controls,new LinearLayout.LayoutParams(-2,dp(54)));
+        LinearLayout.LayoutParams c=new LinearLayout.LayoutParams(-1,dp(54));
         c.bottomMargin=dp(10);
-        floating.addView(controls,c);
+        floating.addView(tools,c);
         if(!guiding){
             LinearLayout sheet=new LinearLayout(this);
             sheet.setOrientation(LinearLayout.VERTICAL);
