@@ -193,4 +193,7 @@
     <string name="navigation_gps_imprecise">GPS inaccurate · progress saved</string>
     <string name="tts_in">in</string>
     <string name="tts_metres">metres</string>
+    <string name="setting_basemap_style">Map style</string>
+    <string name="map_style_routix">Routix (original)</string>
+    <string name="map_style_vela">Vela Maps (online)</string>
 </resources>

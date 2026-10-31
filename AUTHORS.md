@@ -4,6 +4,7 @@ Routix intègre des composants open source et des données cartographiques.
 
 - [OpenStreetMap](https://www.openstreetmap.org/copyright) : données cartographiques © contributeurs OpenStreetMap (ODbL).
 - [OpenFreeMap](https://openfreemap.org/) et [OpenMapTiles](https://openmaptiles.org/) : styles et tuiles utilisés pour les cartes en ligne.
+- [Vela Maps](https://github.com/PimpinPumpkin/Vela) (GPL-3.0) : inspiration et palette cartographique Liberty du mode Vela de Routix.
 - [MapLibre Native](https://maplibre.org/), [osmdroid](https://github.com/osmdroid/osmdroid), [mapsforge](https://github.com/mapsforge/mapsforge) : bibliothèques de carte.
 - [AndroidX](https://developer.android.com/jetpack/androidx) : composants d’interface et de compatibilité.
 - Les contributions et travaux préexistants restent attribués à leurs auteurs d’origine ; consulter l’historique Git et les licences des bibliothèques.

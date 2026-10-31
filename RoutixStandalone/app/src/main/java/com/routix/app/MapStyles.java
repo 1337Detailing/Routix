@@ -12,7 +12,17 @@ final class MapStyles {
         return "light".equals(appearance)?RoutixTheme.lightMap():"dark".equals(appearance)?RoutixTheme.from(p):t;
     }
     static boolean dark(SharedPreferences prefs){return !tokens(prefs).light();}
-    static String uri(SharedPreferences prefs){return "asset://maps/"+(dark(prefs)?"dark":"light")+".json";}
+    static boolean vela(SharedPreferences prefs) {
+        return "vela".equals(prefs.getString("basemap_style", "routix"));
+    }
+    static String uri(SharedPreferences prefs) {
+        return vela(prefs) ? VelaMapStyle.LIVE_LIBERTY
+                : "asset://maps/" + (dark(prefs) ? "dark" : "light") + ".json";
+    }
+    /** A palette change must reload Liberty even though its remote style URL is unchanged. */
+    static String styleKey(SharedPreferences prefs) {
+        return uri(prefs) + (vela(prefs) ? (dark(prefs) ? "#night" : "#day") : "");
+    }
     static void apply(Style s,RoutixTheme.Tokens t){
         for(Layer l:s.getLayers())switch(l.getId()){
             case "background":l.setProperties(backgroundColor(t.base));break;

@@ -194,4 +194,7 @@
     <string name="navigation_gps_imprecise">GPS неточен · прогресс сохранён</string>
     <string name="tts_in">через</string>
     <string name="tts_metres">метров</string>
+    <string name="setting_basemap_style">Стиль карты</string>
+    <string name="map_style_routix">Routix (оригинальный)</string>
+    <string name="map_style_vela">Vela Maps (онлайн)</string>
 </resources>
