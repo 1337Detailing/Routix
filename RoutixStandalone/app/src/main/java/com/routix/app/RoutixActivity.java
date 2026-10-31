@@ -130,11 +130,18 @@ public class RoutixActivity extends AppCompatActivity {
     }
 
     private View buildTopBar(){
-        LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(5),dp(8),dp(5));bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(2));
-        headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(170),dp(50)));
-        gpsStatus=text("GPS",11f,Typeface.BOLD,MUTED);TextView status=gpsStatus;status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
-        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.width=0;bar.addView(status,statusLp);
-        return bar;
+        LinearLayout bar=new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(14),dp(5),dp(12),dp(5));
+        bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(5));
+        View accentRail=new View(this);accentRail.setBackground(surface(accent,99));
+        LinearLayout.LayoutParams rail=new LinearLayout.LayoutParams(dp(3),dp(29));rail.rightMargin=dp(11);bar.addView(accentRail,rail);
+        headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(148),dp(49)));
+        gpsStatus=text("GPS",11,Typeface.BOLD,MUTED);gpsStatus.setGravity(Gravity.CENTER);
+        gpsStatus.setContentDescription("État GPS");gpsStatus.setSingleLine(true);
+        gpsStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);gpsStatus.setPadding(dp(7),0,dp(7),0);
+        gpsStatus.setBackground(surface(SURFACE2,12));
+        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,dp(38),1);statusLp.leftMargin=dp(4);
+        bar.addView(gpsStatus,statusLp);return bar;
     }
     private View buildMapControls(){
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
@@ -145,8 +152,24 @@ public class RoutixActivity extends AppCompatActivity {
         return actions;
     }
 
-    private View buildDock(){LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));row.setBackground(surface(SURFACE,24));row.setElevation(dp(2));tab(row,"⌖",getString(R.string.tab_map),"map");tab(row,"●",getString(R.string.tab_record),"record");tab(row,"≡",getString(R.string.tab_routes),"routes");tab(row,"•••",getString(R.string.tab_more),"more");return row;}
-    private void tab(LinearLayout row,String glyph,String label,String key){TextView t=text(label,12,Typeface.BOLD,MUTED);TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);t.setTag(key);t.setContentDescription(label);t.setOnClickListener(v->showTab(key,true));row.addView(t,new LinearLayout.LayoutParams(0,-1,1));}
+    private View buildDock(){
+        LinearLayout row=new LinearLayout(this);row.setPadding(dp(6),dp(6),dp(6),dp(6));
+        row.setBackground(surface(SURFACE,26));row.setElevation(dp(5));
+        tab(row,"⌖",getString(R.string.tab_map),"map");
+        tab(row,"●",getString(R.string.tab_record),"record");
+        tab(row,"≡",getString(R.string.tab_routes),"routes");
+        tab(row,"•••",getString(R.string.tab_more),"more");
+        return row;
+    }
+    private void tab(LinearLayout row,String glyph,String label,String key){
+        TextView t=text(label,11,Typeface.BOLD,MUTED);
+        t.setLetterSpacing(.015f);t.setPadding(dp(2),dp(3),dp(2),dp(3));
+        TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(23),dp(23));
+        t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);
+        t.setTag(key);t.setContentDescription(label);
+        t.setOnClickListener(v->{press(v);showTab(key,true);});
+        row.addView(t,new LinearLayout.LayoutParams(0,-1,1));
+    }
 
     private void showTab(String key,boolean animate){
         if("hours".equals(key)||"planlab".equals(key))key="more";
@@ -154,7 +177,22 @@ public class RoutixActivity extends AppCompatActivity {
         if(mapMode){contentHost.addView(mapCard());}else if("record".equals(key))contentHost.addView(recordPage());else if("routes".equals(key))contentHost.addView(routesPage());else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());else if("settings".equals(key))contentHost.addView(settingsPage());else if("stats".equals(key))contentHost.addView(statsPage());else if("more".equals(key))contentHost.addView(morePage());recordSheet="record".equals(key)?contentHost:null;updateDock();positionChrome();if(mapMode)drawRecordingTrace();
         if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){int d=animDuration();contentHost.setAlpha(0);contentHost.setTranslationY(dp((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?20:8));contentHost.setScaleX((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.setScaleY((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.animate().alpha(1).translationY(0).scaleX(1).scaleY(1).setDuration(d).start();}
     }
-    private void updateDock(){ViewGroup r=(ViewGroup)dock;for(int i=0;i<r.getChildCount();i++){TextView t=(TextView)r.getChildAt(i);boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));t.setTextColor(on?accent:MUTED);TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setBackground(on?surface(SURFACE2,12):null);if((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))&&!(guiding&&prefs.getBoolean("battery_saver",true)))t.animate().scaleX(on?1.055f:1f).scaleY(on?1.055f:1f).setDuration(180).start();}}
+    private void updateDock(){
+        ViewGroup r=(ViewGroup)dock;
+        for(int i=0;i<r.getChildCount();i++){
+            TextView t=(TextView)r.getChildAt(i);
+            boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))
+                ||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)
+                &&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));
+            t.setSelected(on);t.setTextColor(on?TEXT:MUTED);
+            TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);
+            symbol.setBounds(0,0,dp(23),dp(23));t.setCompoundDrawables(null,symbol,null,null);
+            t.setBackground(on?RoutixTheme.selected(theme,getResources().getDisplayMetrics().density):null);
+            if(RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false)
+                &&!(guiding&&prefs.getBoolean("battery_saver",true)))
+                t.animate().scaleX(on?1.02f:1f).scaleY(on?1.02f:1f).setDuration(160).start();
+        }
+    }
 
     private View mapCard(){
         LinearLayout floating=new LinearLayout(this);floating.setOrientation(LinearLayout.VERTICAL);View floatingControls=buildMapControls();LinearLayout.LayoutParams controlLayout=new LinearLayout.LayoutParams(-2,dp(guiding?46:52));controlLayout.gravity=Gravity.END;controlLayout.bottomMargin=dp(guiding?6:10);floating.addView(floatingControls,controlLayout);
@@ -592,17 +630,69 @@ public class RoutixActivity extends AppCompatActivity {
         if(!recoveryOffered){recoveryOffered=true;if(!recording&&store.hasDraft())offerDraftRecovery();}
     }
 
-    private ScrollView scrollPanel(View panel){ScrollView scroll=new ScrollView(this);scroll.addView(panel);return scroll;}
-    private LinearLayout page(String title,String sub){LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);int pad=20;p.setPadding(dp(pad),dp(prefs.getBoolean("compact_ui",false)?12:18),dp(pad),dp(28));p.addView(text(title,30,Typeface.BOLD,TEXT));TextView s=text(sub,12,Typeface.NORMAL,MUTED);s.setPadding(0,dp(4),0,dp(14));p.addView(s);return p;}
-    private TextView section(String s){TextView t=text(s.toUpperCase(Locale.ROOT),10,Typeface.BOLD,accent);t.setPadding(0,dp(20),0,dp(8));return t;}
-    private TextView text(String s,float size,int style,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(Math.max(12,size));t.setTextColor(theme.readable(color));t.setTypeface(Typeface.create("sans-serif",style));t.setIncludeFontPadding(false);t.setLineSpacing(dp(2),1);return t;}
-    private TextView pill(String s,int color){TextView t=text(s,13,Typeface.BOLD,(color==accent||color==GREEN||color==PEACH||color==RED)?RoutixTheme.ink(color):TEXT);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(52));t.setPadding(dp(8),dp(8),dp(8),dp(8));t.setMaxLines(2);androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(t,11,15,1,android.util.TypedValue.COMPLEX_UNIT_SP);t.setBackground(surface(color,12));return t;}
-    private TextView compactMetric(String value,String label){TextView t=text(value+"  "+label,12,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setSingleLine(true);t.setBackground(surface(SURFACE2,14));return t;}
-    private TextView metric(String value,String label){TextView t=text(value+"\n"+label,13,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setBackground(surface(SURFACE,20));return t;}
-    private TextView bigMetric(String value,String label,int color){TextView t=text(value+"\n"+label,18,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setBackground(surface(theme.tint(color),24));return t;}
-    private TextView icon(String s){TextView t=text("",19,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setPadding(dp(13),dp(13),dp(13),dp(13));String kind="◎".equals(s)?"locate":("↑".equals(s)||"N".equals(s))?"north":"more";TerrainIcon glyph=new TerrainIcon(kind,TEXT);glyph.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(glyph,null,null,null);t.setBackground(surface(SURFACE2,12));return t;}
-
-    private TextView infoCard(String title,String body){TextView t=text(title+"\n"+body,12,Typeface.NORMAL,MUTED);t.setPadding(dp(14),dp(12),dp(14),dp(12));t.setBackground(surface(SURFACE,20));return t;}
+    private ScrollView scrollPanel(View panel){
+        ScrollView scroll=new ScrollView(this);scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(panel);return scroll;
+    }
+    private LinearLayout page(String title,String sub){
+        LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);
+        int pad=prefs.getBoolean("compact_ui",false)?16:20;
+        p.setPadding(dp(pad),dp(17),dp(pad),dp(30));
+        TextView eyebrow=text("ROUTIX   /   WORKSPACE",10,Typeface.BOLD,accent);
+        eyebrow.setLetterSpacing(.14f);
+        LinearLayout.LayoutParams el=new LinearLayout.LayoutParams(-1,-2);el.bottomMargin=dp(7);
+        p.addView(eyebrow,el);
+        TextView heading=text(title,29,Typeface.BOLD,TEXT);heading.setLetterSpacing(-.025f);p.addView(heading);
+        if(sub!=null&&!sub.trim().isEmpty()){
+            TextView summary=text(sub,12,Typeface.NORMAL,MUTED);summary.setPadding(0,dp(5),0,0);p.addView(summary);
+        }
+        p.addView(new View(this),new LinearLayout.LayoutParams(-1,dp(14)));
+        return p;
+    }
+    private TextView section(String s){
+        TextView t=text(s.toUpperCase(Locale.ROOT),11,Typeface.BOLD,accent);
+        t.setLetterSpacing(.10f);t.setPadding(dp(3),dp(19),0,dp(10));return t;
+    }
+    private TextView text(String s,float size,int style,int color){
+        TextView t=new TextView(this);t.setText(s);t.setTextSize(Math.max(11,size));
+        t.setTextColor(theme.readable(color));
+        t.setTypeface(Typeface.create(style==Typeface.BOLD?"sans-serif-medium":"sans-serif",style));
+        t.setIncludeFontPadding(false);t.setLineSpacing(dp(2),1.04f);return t;
+    }
+    private TextView pill(String s,int color){
+        TextView t=text(s,13,Typeface.BOLD,(color==accent||color==GREEN||color==PEACH||color==RED)?RoutixTheme.ink(color):TEXT);
+        t.setGravity(Gravity.CENTER);t.setMinHeight(dp(52));t.setPadding(dp(10),dp(9),dp(10),dp(9));t.setMaxLines(2);
+        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(t,11,14,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+        t.setBackground(RoutixTheme.touch(theme,color,16,getResources().getDisplayMetrics().density));return t;
+    }
+    private TextView compactMetric(String value,String label){
+        TextView t=text(value+"  "+label,12,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setSingleLine(true);t.setBackground(surface(SURFACE2,16));return t;
+    }
+    private TextView metric(String value,String label){
+        TextView t=text(value+"\n"+label,14,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setPadding(dp(4),dp(12),dp(4),dp(12));t.setBackground(surface(SURFACE,20));return t;
+    }
+    private TextView bigMetric(String value,String label,int color){
+        TextView t=text(value+"\n"+label,18,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setPadding(dp(5),dp(9),dp(5),dp(9));t.setBackground(surface(theme.tint(color),22));return t;
+    }
+    private TextView icon(String s){
+        TextView t=text("",19,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);t.setPadding(dp(11),dp(11),dp(11),dp(11));
+        String kind="◎".equals(s)?"locate":("↑".equals(s)||"N".equals(s))?"north":("star".equals(s)?"star":"more");
+        TerrainIcon glyph=new TerrainIcon(kind,TEXT);glyph.setBounds(0,0,dp(22),dp(22));
+        t.setCompoundDrawables(glyph,null,null,null);
+        t.setBackground(RoutixTheme.touch(theme,SURFACE2,16,getResources().getDisplayMetrics().density));return t;
+    }
+    private TextView infoCard(String title,String body){
+        TextView t=text(title+"\n"+body,13,Typeface.NORMAL,MUTED);
+        android.text.SpannableString span=new android.text.SpannableString(title+"\n"+body);
+        span.setSpan(new android.text.style.ForegroundColorSpan(TEXT),0,title.length(),0);
+        span.setSpan(new android.text.style.StyleSpan(Typeface.BOLD),0,title.length(),0);
+        span.setSpan(new android.text.style.RelativeSizeSpan(1.14f),0,title.length(),0);
+        t.setText(span);t.setPadding(dp(16),dp(15),dp(16),dp(15));t.setBackground(surface(SURFACE,22));return t;
+    }
     private View stage(String number,String title,String sub,int color){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(12),dp(10),dp(12),dp(10));r.setBackground(surface(SURFACE,18));TextView n=text(number,12,Typeface.BOLD,color);n.setGravity(Gravity.CENTER);n.setBackground(surface(SURFACE2,14));r.addView(n,new LinearLayout.LayoutParams(dp(42),dp(42)));LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);tx.setPadding(dp(11),0,0,0);tx.addView(text(title,13,Typeface.BOLD,TEXT));tx.addView(text(sub,11,Typeface.NORMAL,MUTED));r.addView(tx,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(7);r.setLayoutParams(lp);return r;}
     private View summaryStat(String label,String value){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setGravity(Gravity.CENTER);c.addView(text(value,13,Typeface.BOLD,TEXT));c.addView(text(label,9,Typeface.BOLD,MUTED));return c;}
     private GradientDrawable surface(int color,float radius){return RoutixTheme.surface(theme,color,radius>=90?99:radius<=16?12:22,getResources().getDisplayMetrics().density);}
