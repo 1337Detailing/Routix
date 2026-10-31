@@ -196,4 +196,14 @@
     <string name="setting_basemap_style">Map style</string>
     <string name="map_style_routix">Routix (original)</string>
     <string name="map_style_vela">Vela Maps (online)</string>
+    <string name="setting_app_theme">Application theme</string>
+    <string name="setting_dynamic_colors">Dynamic color</string>
+    <string name="setting_dynamic_colors_summary">Use Android wallpaper colors when available</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_auto">Follow system</string>
+    <string name="section_display">Appearance</string>
+    <string name="section_map">Map</string>
+    <string name="section_navigation">Routes and guidance</string>
+    <string name="section_performance">Comfort and battery</string>
 </resources>

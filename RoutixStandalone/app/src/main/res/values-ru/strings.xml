@@ -197,4 +197,14 @@
     <string name="setting_basemap_style">Стиль карты</string>
     <string name="map_style_routix">Routix (оригинальный)</string>
     <string name="map_style_vela">Vela Maps (онлайн)</string>
+    <string name="setting_app_theme">Тема приложения</string>
+    <string name="setting_dynamic_colors">Динамические цвета</string>
+    <string name="setting_dynamic_colors_summary">Использовать цвета обоев Android</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_auto">Как в системе</string>
+    <string name="section_display">Внешний вид</string>
+    <string name="section_map">Карта</string>
+    <string name="section_navigation">Маршруты и навигация</string>
+    <string name="section_performance">Комфорт и батарея</string>
 </resources>

@@ -16,8 +16,8 @@ final class RoutixDialogs {
     }
     static void style(AlertDialog dialog,Context context){
         RoutixTheme.Tokens t=RoutixTheme.from(context);float density=context.getResources().getDisplayMetrics().density;
-        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(RoutixTheme.surface(t,t.base,22,density));tint(dialog.getWindow().getDecorView(),t);}
-        for(int id:new int[]{AlertDialog.BUTTON_POSITIVE,AlertDialog.BUTTON_NEGATIVE,AlertDialog.BUTTON_NEUTRAL}){Button b=dialog.getButton(id);if(b!=null){b.setTextColor(t.accent);b.setAllCaps(false);b.setMinHeight((int)(52*density));}}
+        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(RoutixTheme.surface(t,t.mantle,28,density));tint(dialog.getWindow().getDecorView(),t);}
+        for(int id:new int[]{AlertDialog.BUTTON_POSITIVE,AlertDialog.BUTTON_NEGATIVE,AlertDialog.BUTTON_NEUTRAL}){Button b=dialog.getButton(id);if(b!=null){b.setTextColor(t.accent);b.setAllCaps(false);b.setMinHeight((int)(52*density));b.setTextSize(14);}}
         ListView list=dialog.getListView();if(list!=null){list.setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener(){public void onChildViewAdded(View p,View c){tint(c,t);}public void onChildViewRemoved(View p,View c){}});}
     }
     private static void tint(View v,RoutixTheme.Tokens t){

@@ -27,7 +27,7 @@ public final class OnboardingActivity extends AppCompatActivity {
         prefs=getSharedPreferences("routix",MODE_PRIVATE);
         setTheme(RoutixTheme.activityStyle(prefs));
         super.onCreate(savedState);
-        theme=RoutixTheme.from(prefs);
+        theme=RoutixTheme.from(this);
         if(prefs.getBoolean("onboarding_complete",false)&&hasLocation()){launchApp();return;}
         RoutixTheme.systemBars(this,theme);
         ScrollView scroll=new ScrollView(this);
@@ -36,35 +36,63 @@ public final class OnboardingActivity extends AppCompatActivity {
         LinearLayout page=new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setGravity(Gravity.CENTER_VERTICAL);
-        page.setPadding(dp(24),dp(30),dp(24),dp(26));
+        page.setPadding(dp(24),dp(32),dp(24),dp(32));
 
         ImageView brand=new ImageView(this);
         brand.setImageResource(R.drawable.ic_routix);
         brand.setContentDescription(getString(R.string.app_name));
-        LinearLayout.LayoutParams logo=new LinearLayout.LayoutParams(dp(88),dp(88));
+        LinearLayout.LayoutParams logo=new LinearLayout.LayoutParams(dp(94),dp(94));
         logo.gravity=Gravity.CENTER_HORIZONTAL;
         page.addView(brand,logo);
 
-        TextView title=label(getString(R.string.app_name),28,Typeface.BOLD,theme.text);
-        title.setGravity(Gravity.CENTER);
-        add(page,title,18);
+        TextView name=label(getString(R.string.app_name),34,Typeface.BOLD,theme.text);
+        name.setGravity(Gravity.CENTER);
+        add(page,name,15);
+        TextView tagline=label("GPS   •   TOURNÉES   •   GUIDAGE",11,Typeface.BOLD,theme.muted());
+        tagline.setLetterSpacing(.09f);
+        tagline.setGravity(Gravity.CENTER);
+        add(page,tagline,8);
 
-        TextView permission=label(getString(R.string.permission_location_title),21,Typeface.BOLD,theme.text);
-        add(page,permission,40);
-        TextView detail=label(getString(R.string.permission_location_explanation),15,Typeface.NORMAL,theme.muted());
-        add(page,detail,8);
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(19),dp(22),dp(19),dp(20));
+        card.setBackground(RoutixTheme.surface(theme,theme.mantle,28,getResources().getDisplayMetrics().density));
+        card.setElevation(dp(5));
+        LinearLayout.LayoutParams cardLp=new LinearLayout.LayoutParams(-1,-2);
+        cardLp.topMargin=dp(40);
+        page.addView(card,cardLp);
+
+        TextView step=label("01  /  01",12,Typeface.BOLD,theme.accent);
+        step.setLetterSpacing(.12f);
+        card.addView(step);
+        TextView permission=label(getString(R.string.permission_location_title),22,Typeface.BOLD,theme.text);
+        LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(-1,-2);
+        titleLp.topMargin=dp(14);
+        card.addView(permission,titleLp);
+
+        TextView detail=label(getString(R.string.permission_location_explanation),14,Typeface.NORMAL,theme.muted());
+        LinearLayout.LayoutParams detailLp=new LinearLayout.LayoutParams(-1,-2);
+        detailLp.topMargin=dp(11);
+        card.addView(detail,detailLp);
+
         status=label("",13,Typeface.NORMAL,theme.muted());
-        add(page,status,14);
+        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(-1,-2);
+        statusLp.topMargin=dp(14);
+        card.addView(status,statusLp);
 
         action=label(getString(R.string.permission_continue),16,Typeface.BOLD,theme.onAccent());
         action.setGravity(Gravity.CENTER);
         action.setPadding(dp(14),dp(14),dp(14),dp(14));
-        action.setMinHeight(dp(56));
+        action.setMinHeight(dp(60));
         action.setBackground(new android.graphics.drawable.RippleDrawable(
             android.content.res.ColorStateList.valueOf(theme.tint(theme.accent)),
-            RoutixTheme.surface(theme,theme.accent,12,getResources().getDisplayMetrics().density),null));
+            RoutixTheme.surface(theme,theme.accent,20,getResources().getDisplayMetrics().density),null));
         action.setOnClickListener(v->requestLocation());
-        add(page,action,30);
+        action.setFocusable(true);
+        LinearLayout.LayoutParams actionLp=new LinearLayout.LayoutParams(-1,dp(60));
+        actionLp.topMargin=dp(24);
+        card.addView(action,actionLp);
+
         scroll.addView(page);
         setContentView(scroll);
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(scroll,(v,in)->{
@@ -77,7 +105,6 @@ public final class OnboardingActivity extends AppCompatActivity {
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(),false);
         refresh();
     }
-
     private boolean hasLocation() {
         return ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)
             ==PackageManager.PERMISSION_GRANTED;

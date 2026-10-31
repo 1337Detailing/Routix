@@ -75,6 +75,8 @@ public class RoutixActivity extends AppCompatActivity {
     private float nextActionDistance=Float.MAX_VALUE;
     private TextView recordMain,recordStatus,recordDistance,recordPoints,recordEvents,reverseButton,twoSidesButton,pauseButton,guideCue,guideDistance,guideProgress;
     private File detailFile;
+    private boolean recordSheetExpanded;
+    private float recordSheetDownY;
     private GuidanceEngine guidance; private RouteStore.Summary guidingRoute;
 
     @Override protected void onCreate(Bundle state){
@@ -83,10 +85,10 @@ public class RoutixActivity extends AppCompatActivity {
         Configuration.getInstance().setCacheMapTileCount((short)64);Configuration.getInstance().setTileFileSystemCacheMaxBytes(64L*1024*1024);Configuration.getInstance().setTileFileSystemCacheTrimBytes(48L*1024*1024);Configuration.getInstance().setUserAgentValue(getPackageName()+"/2.1 Routix");Configuration.getInstance().setOsmdroidBasePath(new File(getCacheDir(),"osmdroid"));Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(),"osmdroid/tiles"));
         root=new FrameLayout(this);root.setBackgroundColor(BG);buildMap();topBar=buildTopBar();contentHost=new LinearLayout(this);contentHost.setOrientation(LinearLayout.VERTICAL);dock=buildDock();root.addView(topBar);root.addView(contentHost);root.addView(dock);setContentView(root);
         ViewCompat.setOnApplyWindowInsetsListener(root,(v,in)->{androidx.core.graphics.Insets b=in.getInsets(WindowInsetsCompat.Type.systemBars()|WindowInsetsCompat.Type.displayCutout());systemTop=b.top;systemBottom=b.bottom;positionChrome();return in;});ViewCompat.requestApplyInsets(root);
-        if(state!=null&&state.getString("detail_file")!=null)detailFile=new File(store.routesDir(),new File(state.getString("detail_file")).getName());showTab(state==null?"map":state.getString("workspace","map"),false);ensureLocation();applyRuntimePrefs();new Thread(()->{store.restoreBackups();runOnUiThread(()->{if(!isDestroyed()&&"routes".equals(selectedTab))showTab("routes",false);});},"restore-backups").start();
+        if(state!=null)recordSheetExpanded=state.getBoolean("record_sheet_expanded",false);if(state!=null&&state.getString("detail_file")!=null)detailFile=new File(store.routesDir(),new File(state.getString("detail_file")).getName());showTab(state==null?"map":state.getString("workspace","map"),false);ensureLocation();applyRuntimePrefs();new Thread(()->{store.restoreBackups();runOnUiThread(()->{if(!isDestroyed()&&"routes".equals(selectedTab))showTab("routes",false);});},"restore-backups").start();
     }
 
-    private void applyThemeTokens(){theme=RoutixTheme.from(prefs);BG=theme.background;SURFACE=theme.surface;SURFACE2=theme.surface0;TEXT=theme.content;MUTED=theme.secondaryContent;GREEN=theme.success;PEACH=theme.warning;RED=theme.error;MAUVE=theme.mauve;BLUE=theme.blue;PINK=theme.pink;TEAL=theme.teal;YELLOW=theme.yellow;}
+    private void applyThemeTokens(){theme=RoutixTheme.from(this);BG=theme.background;SURFACE=theme.surface;SURFACE2=theme.surface0;TEXT=theme.content;MUTED=theme.secondaryContent;GREEN=theme.success;PEACH=theme.warning;RED=theme.error;MAUVE=theme.mauve;BLUE=theme.blue;PINK=theme.pink;TEAL=theme.teal;YELLOW=theme.yellow;}
 
     private void migrateMapPreference(){String s=prefs==null?null:prefs.getString("map_style",null);if(s==null||s.startsWith("apple_")||"terrain".equals(s))prefs.edit().putString("map_style","osm").apply();}
 
@@ -115,8 +117,8 @@ public class RoutixActivity extends AppCompatActivity {
             org.osmdroid.mapsforge.MapsForgeTileSource source=org.osmdroid.mapsforge.MapsForgeTileSource.createFromFiles(new File[]{FranceOfflineManager.file(this,pack)},new org.mapsforge.map.rendertheme.ExternalRenderTheme(theme),"routix-"+name,"fr");
             map.setTileProvider(new org.osmdroid.mapsforge.MapsForgeTileProvider(new org.osmdroid.tileprovider.util.SimpleRegisterReceiver(this),source,null));offline=true;
         }catch(Exception e){DiagnosticLog.error("offline map",e);toast("Pack hors ligne illisible : carte en ligne utilisée");}
-        if(modern!=null){modern.refreshStyle();modern.setVisible(!offline&&"map".equals(selectedTab));}
-        map.setVisibility(offline&&"map".equals(selectedTab)?View.VISIBLE:View.GONE);map.setAlpha(offline?1:0);if(mapAttribution!=null)mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");if(guiding)redrawGuidance();map.invalidate();
+        if(modern!=null){modern.refreshStyle();modern.setVisible(!offline&&("map".equals(selectedTab)||"record".equals(selectedTab)));}
+        map.setVisibility(offline&&("map".equals(selectedTab)||"record".equals(selectedTab))?View.VISIBLE:View.GONE);map.setAlpha(offline?1:0);if(mapAttribution!=null)mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");if(guiding)redrawGuidance();map.invalidate();
     }
 
     private Bitmap createPositionIcon(String style){
@@ -129,13 +131,38 @@ public class RoutixActivity extends AppCompatActivity {
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(2));p.setColor(theme.onAccent());c.drawCircle(z/2f,z/2f,z*.43f,p);return b;
     }
 
+
     private View buildTopBar(){
-        LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(5),dp(8),dp(5));bar.setBackground(surface(SURFACE,24));bar.setElevation(dp(2));
-        headerSpeed=new CompactSpeedometer(this);bar.addView(headerSpeed,new LinearLayout.LayoutParams(dp(170),dp(50)));
-        gpsStatus=text("GPS",11f,Typeface.BOLD,MUTED);TextView status=gpsStatus;status.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);status.setContentDescription("État GPS");status.setPadding(dp(7),0,dp(8),0);
-        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,-1,1);statusLp.width=0;bar.addView(status,statusLp);
+        LinearLayout bar=new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(12),dp(5),dp(12),dp(5));
+        bar.setBackground(surface(SURFACE,24));
+        bar.setElevation(dp(6));
+        LinearLayout brand=new LinearLayout(this);
+        brand.setOrientation(LinearLayout.VERTICAL);
+        TextView name=text("routix",18,Typeface.BOLD,TEXT);
+        brand.addView(name);
+        TextView label=text("GPS & TOURNÉES",9,Typeface.BOLD,MUTED);
+        brand.addView(label);
+        brand.setContentDescription("Routix · carte et tournées");
+        brand.setOnClickListener(v->showTab("map",true));
+        bar.addView(brand,new LinearLayout.LayoutParams(dp(86),-2));
+        headerSpeed=new CompactSpeedometer(this);
+        LinearLayout.LayoutParams speedLp=new LinearLayout.LayoutParams(dp(104),dp(50));
+        speedLp.leftMargin=dp(2);
+        bar.addView(headerSpeed,speedLp);
+        gpsStatus=text("GPS",11,Typeface.BOLD,MUTED);
+        gpsStatus.setGravity(Gravity.CENTER);
+        gpsStatus.setSingleLine(true);
+        gpsStatus.setPadding(dp(5),0,dp(5),0);
+        gpsStatus.setBackground(surface(SURFACE2,99));
+        gpsStatus.setContentDescription("État de la localisation GPS");
+        LinearLayout.LayoutParams statusLp=new LinearLayout.LayoutParams(0,dp(38),1);
+        statusLp.leftMargin=dp(4);
+        bar.addView(gpsStatus,statusLp);
         return bar;
     }
+
     private View buildMapControls(){
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
         TextView north=icon(headingUp?"↑":"N");north.setContentDescription("Basculer cap en haut ou nord en haut");
@@ -145,52 +172,295 @@ public class RoutixActivity extends AppCompatActivity {
         return actions;
     }
 
-    private View buildDock(){LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));row.setBackground(surface(SURFACE,24));row.setElevation(dp(2));tab(row,"⌖",getString(R.string.tab_map),"map");tab(row,"●",getString(R.string.tab_record),"record");tab(row,"≡",getString(R.string.tab_routes),"routes");tab(row,"•••",getString(R.string.tab_more),"more");return row;}
-    private void tab(LinearLayout row,String glyph,String label,String key){TextView t=text(label,12,Typeface.BOLD,MUTED);TerrainIcon symbol=new TerrainIcon(key,MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setCompoundDrawablePadding(dp(4));t.setGravity(Gravity.CENTER);t.setTag(key);t.setContentDescription(label);t.setOnClickListener(v->showTab(key,true));row.addView(t,new LinearLayout.LayoutParams(0,-1,1));}
+
+    private View buildDock(){
+        LinearLayout row=new LinearLayout(this);
+        row.setPadding(dp(5),dp(5),dp(5),dp(5));
+        row.setBackground(surface(SURFACE,28));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setElevation(dp(10));
+        tab(row,"⌖",getString(R.string.tab_map),"map");
+        tab(row,"●",getString(R.string.tab_record),"record");
+        tab(row,"≡",getString(R.string.tab_routes),"routes");
+        tab(row,"•••",getString(R.string.tab_more),"more");
+        return row;
+    }
+    private void tab(LinearLayout row,String glyph,String label,String key){
+        TextView t=text(label,11,Typeface.BOLD,MUTED);
+        TerrainIcon symbol=new TerrainIcon(key,MUTED);
+        symbol.setBounds(0,0,dp(23),dp(23));
+        t.setCompoundDrawables(null,symbol,null,null);
+        t.setCompoundDrawablePadding(dp(3));
+        t.setGravity(Gravity.CENTER);
+        t.setTag(key);
+        t.setContentDescription(label);
+        t.setMinHeight(dp(54));
+        t.setMinimumHeight(dp(54));
+        t.setOnClickListener(v->{press(v);showTab(key,true);});
+        row.addView(t,new LinearLayout.LayoutParams(0,-1,1));
+    }
+
 
     private void showTab(String key,boolean animate){
         if("hours".equals(key)||"planlab".equals(key))key="more";
-        selectedTab=key;contentHost.animate().cancel();contentHost.setAlpha(1);contentHost.setTranslationY(0);contentHost.setScaleX(1);contentHost.setScaleY(1);contentHost.removeAllViews();boolean mapMode="map".equals(key);map.setVisibility(mapMode&&offline?View.VISIBLE:View.GONE);if(modern!=null)modern.setVisible(mapMode&&!offline);topBar.setVisibility(View.VISIBLE);if(mapAttribution!=null){mapAttribution.setVisibility(mapMode?View.VISIBLE:View.GONE);mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");}
-        if(mapMode){contentHost.addView(mapCard());}else if("record".equals(key))contentHost.addView(recordPage());else if("routes".equals(key))contentHost.addView(routesPage());else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());else if("settings".equals(key))contentHost.addView(settingsPage());else if("stats".equals(key))contentHost.addView(statsPage());else if("more".equals(key))contentHost.addView(morePage());recordSheet="record".equals(key)?contentHost:null;updateDock();positionChrome();if(mapMode)drawRecordingTrace();
-        if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){int d=animDuration();contentHost.setAlpha(0);contentHost.setTranslationY(dp((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?20:8));contentHost.setScaleX((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.setScaleY((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))?.982f:1f);contentHost.animate().alpha(1).translationY(0).scaleX(1).scaleY(1).setDuration(d).start();}
+        selectedTab=key;
+        contentHost.animate().cancel();
+        contentHost.setAlpha(1);
+        contentHost.setTranslationY(0);
+        contentHost.setScaleX(1);
+        contentHost.setScaleY(1);
+        contentHost.removeAllViews();
+        boolean mapMode="map".equals(key);
+        boolean mapVisible=mapMode||"record".equals(key);
+        map.setVisibility(mapVisible&&offline?View.VISIBLE:View.GONE);
+        if(modern!=null)modern.setVisible(mapVisible&&!offline);
+        topBar.setVisibility(View.VISIBLE);
+        if(mapAttribution!=null){
+            mapAttribution.setVisibility(mapVisible?View.VISIBLE:View.GONE);
+            mapAttribution.setText(offline?"© OpenStreetMap contributors":"© OpenFreeMap · OpenMapTiles · OpenStreetMap");
+        }
+        contentHost.setBackgroundColor(mapVisible?Color.TRANSPARENT:BG);
+        if(mapMode)contentHost.addView(mapCard());
+        else if("record".equals(key))contentHost.addView(recordPage());
+        else if("routes".equals(key))contentHost.addView(routesPage());
+        else if("detail".equals(key)&&detailFile!=null)contentHost.addView(routeDetailPage(detailFile));
+        else if("gpxlab".equals(key))contentHost.addView(gpxLabPage());
+        else if("settings".equals(key))contentHost.addView(settingsPage());
+        else if("stats".equals(key))contentHost.addView(statsPage());
+        else if("more".equals(key))contentHost.addView(morePage());
+        recordSheet="record".equals(key)?contentHost:null;
+        updateDock();
+        positionChrome();
+        if(mapVisible)drawRecordingTrace();
+        if(mapMode&&guiding&&tracker!=null)updateRouteGuidance(lastLocation);
+        if(animate&&RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true))){
+            contentHost.setAlpha(0);
+            contentHost.setTranslationY(dp(10));
+            contentHost.animate().alpha(1).translationY(0).setDuration(Math.min(300,animDuration())).start();
+        }
     }
-    private void updateDock(){ViewGroup r=(ViewGroup)dock;for(int i=0;i<r.getChildCount();i++){TextView t=(TextView)r.getChildAt(i);boolean on=selectedTab.equals(t.getTag())||("routes".equals(t.getTag())&&"detail".equals(selectedTab))||("more".equals(t.getTag())&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&!"routes".equals(selectedTab)&&!"detail".equals(selectedTab));t.setTextColor(on?accent:MUTED);TerrainIcon symbol=new TerrainIcon(String.valueOf(t.getTag()),on?accent:MUTED);symbol.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(null,symbol,null,null);t.setBackground(on?surface(SURFACE2,12):null);if((RoutixTheme.motion(prefs)&&prefs.getBoolean("rich_animations",false))&&!(guiding&&prefs.getBoolean("battery_saver",true)))t.animate().scaleX(on?1.055f:1f).scaleY(on?1.055f:1f).setDuration(180).start();}}
+    private void updateDock(){
+        ViewGroup row=(ViewGroup)dock;
+        for(int i=0;i<row.getChildCount();i++){
+            TextView item=(TextView)row.getChildAt(i);
+            String key=String.valueOf(item.getTag());
+            boolean active=selectedTab.equals(key)||("routes".equals(key)&&"detail".equals(selectedTab))||
+                ("more".equals(key)&&!"map".equals(selectedTab)&&!"record".equals(selectedTab)&&
+                !"routes".equals(selectedTab)&&!"detail".equals(selectedTab));
+            boolean record="record".equals(key);
+            int tint=record?theme.onAccent():(active?accent:MUTED);
+            item.setTextColor(tint);
+            TerrainIcon symbol=new TerrainIcon(key,tint);
+            symbol.setBounds(0,0,dp(23),dp(23));
+            item.setCompoundDrawables(null,symbol,null,null);
+            item.setBackground(surface(record?accent:(active?theme.tint(accent):SURFACE),record?22:20));
+        }
+    }
+
 
     private View mapCard(){
-        LinearLayout floating=new LinearLayout(this);floating.setOrientation(LinearLayout.VERTICAL);View floatingControls=buildMapControls();LinearLayout.LayoutParams controlLayout=new LinearLayout.LayoutParams(-2,dp(guiding?46:52));controlLayout.gravity=Gravity.END;controlLayout.bottomMargin=dp(guiding?6:10);floating.addView(floatingControls,controlLayout);
-        if(!guiding)return floating;
-        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(8),dp(7),dp(8),dp(7));card.setBackground(surface(SURFACE,22));card.setElevation(dp(2));
-        guideCue=text("GPS en attente…",17,Typeface.BOLD,TEXT);guideCue.setSingleLine(true);guideCue.setEllipsize(android.text.TextUtils.TruncateAt.END);guideCue.setGravity(Gravity.CENTER_VERTICAL);guideCue.setPadding(dp(10),0,dp(10),0);guideCue.setBackground(surface(SURFACE2,12));card.addView(guideCue,new LinearLayout.LayoutParams(-1,dp(48)));
-        LinearLayout essential=new LinearLayout(this);essential.setGravity(Gravity.CENTER_VERTICAL);essential.setPadding(0,dp(5),0,0);
-        guideDistance=compactMetric("—",getString(R.string.metric_remaining));essential.addView(guideDistance,new LinearLayout.LayoutParams(0,dp(46),1));
-        TextView follow=pill(getString(R.string.route_follow),SURFACE2);follow.setMinHeight(0);follow.setOnClickListener(v->{press(v);guidanceCameraFollow=true;recenter();});LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(46),1);fp.leftMargin=dp(5);essential.addView(follow,fp);
-        TextView stop=pill(getString(R.string.route_stop),RED);stop.setMinHeight(0);stop.setOnClickListener(v->stopGuidance());LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(46),.8f);sp.leftMargin=dp(5);essential.addView(stop,sp);
-        TextView more=pill("•••",SURFACE2);more.setMinHeight(0);more.setContentDescription("Plus d’actions de guidage");LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(dp(48),dp(46));mp.leftMargin=dp(5);essential.addView(more,mp);card.addView(essential);
-        LinearLayout secondary=new LinearLayout(this);secondary.setGravity(Gravity.CENTER_VERTICAL);secondary.setPadding(0,dp(5),0,0);secondary.setVisibility(View.GONE);
-        guideProgress=compactMetric("—",getString(R.string.metric_covered));secondary.addView(guideProgress,new LinearLayout.LayoutParams(0,dp(44),1));
-        TextView resume=pill(getString(R.string.route_resume_here),SURFACE2);resume.setMinHeight(0);resume.setOnClickListener(v->resumeGuidanceHere());LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(44),1.2f);rp.leftMargin=dp(5);secondary.addView(resume,rp);card.addView(secondary);
+        LinearLayout floating=new LinearLayout(this);
+        floating.setOrientation(LinearLayout.VERTICAL);
+        View controls=buildMapControls();
+        LinearLayout tools=new LinearLayout(this);
+        tools.setGravity(Gravity.CENTER_VERTICAL);
+        if(!guiding){
+            TextView search=pill("⌕  "+getString(R.string.routes_search),SURFACE);
+            search.setContentDescription(getString(R.string.routes_search));
+            search.setOnClickListener(v->{press(v);showTab("routes",true);});
+            LinearLayout.LayoutParams searchLp=new LinearLayout.LayoutParams(0,dp(52),1);
+            searchLp.rightMargin=dp(9);
+            tools.addView(search,searchLp);
+        }
+        tools.addView(controls,new LinearLayout.LayoutParams(-2,dp(54)));
+        LinearLayout.LayoutParams c=new LinearLayout.LayoutParams(-1,dp(54));
+        c.bottomMargin=dp(10);
+        floating.addView(tools,c);
+        if(!guiding){
+            LinearLayout sheet=new LinearLayout(this);
+            sheet.setOrientation(LinearLayout.VERTICAL);
+            sheet.setPadding(dp(15),dp(12),dp(15),dp(14));
+            sheet.setBackground(surface(SURFACE,28));
+            sheet.setElevation(dp(8));
+            LinearLayout head=new LinearLayout(this);
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout copy=new LinearLayout(this);
+            copy.setOrientation(LinearLayout.VERTICAL);
+            copy.addView(text(recording?"●  Enregistrement en cours":"Prêt pour la route",17,Typeface.BOLD,recording?GREEN:TEXT));
+            copy.addView(text(recording?"Votre tracé est sauvegardé en continu":"Carte, parcours et suivi GPS",11,Typeface.NORMAL,MUTED));
+            head.addView(copy,new LinearLayout.LayoutParams(0,-2,1));
+            sheet.addView(head);
+            LinearLayout actions=new LinearLayout(this);
+            LinearLayout.LayoutParams apl=new LinearLayout.LayoutParams(-1,dp(54));
+            apl.topMargin=dp(12);
+            TextView launch=pill(recording?"Voir l'enregistrement":"●  Enregistrer",accent);
+            launch.setOnClickListener(v->{press(v);if(recording)showTab("record",true);else startRecording();});
+            TextView routes=pill("Mes tournées",SURFACE2);
+            routes.setOnClickListener(v->{press(v);showTab("routes",true);});
+            actions.addView(launch,new LinearLayout.LayoutParams(0,-1,1.15f));
+            LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);
+            rp.leftMargin=dp(9);
+            actions.addView(routes,rp);
+            sheet.addView(actions,apl);
+            floating.addView(sheet);
+            return floating;
+        }
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12),dp(12),dp(12),dp(12));
+        card.setBackground(surface(SURFACE,28));
+        card.setElevation(dp(8));
+        guideCue=text("GPS en attente…",17,Typeface.BOLD,TEXT);
+        guideCue.setSingleLine(true);
+        guideCue.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        guideCue.setGravity(Gravity.CENTER_VERTICAL);
+        guideCue.setPadding(dp(14),0,dp(14),0);
+        guideCue.setBackground(surface(theme.tint(accent),18));
+        card.addView(guideCue,new LinearLayout.LayoutParams(-1,dp(52)));
+        LinearLayout essential=new LinearLayout(this);
+        essential.setGravity(Gravity.CENTER_VERTICAL);
+        essential.setPadding(0,dp(9),0,0);
+        guideDistance=compactMetric("—",getString(R.string.metric_remaining));
+        essential.addView(guideDistance,new LinearLayout.LayoutParams(0,dp(52),1.15f));
+        TextView follow=pill(getString(R.string.route_follow),SURFACE2);
+        follow.setOnClickListener(v->{press(v);guidanceCameraFollow=true;recenter();});
+        LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(52),1);
+        fp.leftMargin=dp(7);
+        essential.addView(follow,fp);
+        TextView stop=pill(getString(R.string.route_stop),RED);
+        stop.setOnClickListener(v->{press(v);stopGuidance();});
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(52),.9f);
+        sp.leftMargin=dp(7);
+        essential.addView(stop,sp);
+        TextView more=pill("•••",SURFACE2);
+        more.setContentDescription("Autres actions de guidage");
+        LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(dp(52),dp(52));
+        mp.leftMargin=dp(7);
+        essential.addView(more,mp);
+        card.addView(essential);
+        LinearLayout secondary=new LinearLayout(this);
+        secondary.setGravity(Gravity.CENTER_VERTICAL);
+        secondary.setPadding(0,dp(8),0,0);
+        secondary.setVisibility(View.GONE);
+        guideProgress=compactMetric("—",getString(R.string.metric_covered));
+        secondary.addView(guideProgress,new LinearLayout.LayoutParams(0,dp(52),1));
+        TextView resume=pill(getString(R.string.route_resume_here),SURFACE2);
+        resume.setOnClickListener(v->{press(v);resumeGuidanceHere();});
+        LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(52),1.2f);
+        rp.leftMargin=dp(7);
+        secondary.addView(resume,rp);
+        card.addView(secondary);
         more.setOnClickListener(v->{press(v);boolean open=secondary.getVisibility()!=View.VISIBLE;secondary.setVisibility(open?View.VISIBLE:View.GONE);more.setText(open?"⌄":"•••");});
-        floating.addView(card);return floating;
+        floating.addView(card);
+        return floating;
     }
+
     private TextView flagBubble(String glyph,int color){TextView t=text(glyph,22,Typeface.BOLD,color);t.setGravity(Gravity.CENTER);t.setBackground(surface(SURFACE2,23));t.setElevation(dp(4));return t;}
 
+
     private View recordPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_record),"");recordStatus=text(getString(recording?(paused?R.string.record_status_paused:R.string.record_status_active):R.string.record_status_ready),13,Typeface.BOLD,recording?GREEN:MUTED);p.addView(recordStatus);LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(12),0,dp(12));recordDistance=metric(formatDistance(recordedDistance),getString(R.string.metric_distance));recordPoints=metric(String.valueOf(tracker==null?0:tracker.points.size()),getString(R.string.metric_points));recordEvents=metric(String.valueOf(tracker==null?0:tracker.events.size()),getString(R.string.metric_markers));stats.addView(recordDistance,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordPoints,new LinearLayout.LayoutParams(0,dp(68),1));stats.addView(recordEvents,new LinearLayout.LayoutParams(0,dp(68),1));p.addView(stats);
+        ScrollView scroll=new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setClipToOutline(true);
+        scroll.setBackground(surface(SURFACE,28));
+        scroll.setElevation(dp(10));
+        LinearLayout p=new LinearLayout(this);
+        p.setOrientation(LinearLayout.VERTICAL);
+        p.setPadding(dp(16),dp(3),dp(16),dp(20));
+        LinearLayout grip=new LinearLayout(this);
+        grip.setGravity(Gravity.CENTER);
+        grip.setMinimumHeight(dp(48));
+        grip.setFocusable(true);
+        grip.setContentDescription("Déployer ou réduire le panneau d'enregistrement");
+        View handle=new View(this);
+        handle.setBackground(surface(theme.surface1,99));
+        grip.addView(handle,new LinearLayout.LayoutParams(dp(44),dp(5)));
+        grip.setOnClickListener(v->{recordSheetExpanded=!recordSheetExpanded;positionChrome();});
+        grip.setOnTouchListener((v,e)->{
+            if(e.getActionMasked()==MotionEvent.ACTION_DOWN){recordSheetDownY=e.getRawY();return true;}
+            if(e.getActionMasked()==MotionEvent.ACTION_UP){
+                float delta=e.getRawY()-recordSheetDownY;
+                if(Math.abs(delta)>dp(28)){
+                    recordSheetExpanded=delta<0;
+                    positionChrome();
+                }else v.performClick();
+                return true;
+            }
+            return e.getActionMasked()==MotionEvent.ACTION_MOVE;
+        });
+        p.addView(grip,new LinearLayout.LayoutParams(-1,dp(48)));
+        LinearLayout heading=new LinearLayout(this);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout names=new LinearLayout(this);
+        names.setOrientation(LinearLayout.VERTICAL);
+        names.addView(text(getString(R.string.screen_record),22,Typeface.BOLD,TEXT));
+        recordStatus=text(getString(recording?(paused?R.string.record_status_paused:R.string.record_status_active):R.string.record_status_ready),12,Typeface.BOLD,recording?GREEN:MUTED);
+        LinearLayout.LayoutParams statLp=new LinearLayout.LayoutParams(-1,-2);
+        statLp.topMargin=dp(4);
+        names.addView(recordStatus,statLp);
+        heading.addView(names,new LinearLayout.LayoutParams(0,-2,1));
+        TextView mapBack=pill("Carte  ↗",SURFACE2);
+        mapBack.setOnClickListener(v->{press(v);showTab("map",true);});
+        heading.addView(mapBack,new LinearLayout.LayoutParams(dp(92),dp(48)));
+        p.addView(heading);
+        LinearLayout commands=new LinearLayout(this);
+        commands.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams commandsLp=new LinearLayout.LayoutParams(-1,dp(60));
+        commandsLp.topMargin=dp(14);
+        recordMain=pill(getString(recording?R.string.record_finish:R.string.record_start),recording?RED:accent);
+        recordMain.setOnClickListener(v->{press(v);if(recording)finishRecording();else startRecording();});
+        commands.addView(recordMain,new LinearLayout.LayoutParams(0,dp(60),1.6f));
+        pauseButton=pill(getString(paused?R.string.notification_resume:R.string.notification_pause),SURFACE2);
+        pauseButton.setOnClickListener(v->{press(v);togglePause();});
+        if(recording){
+            LinearLayout.LayoutParams pauseLp=new LinearLayout.LayoutParams(0,dp(60),1);
+            pauseLp.leftMargin=dp(9);
+            commands.addView(pauseButton,pauseLp);
+        }
+        p.addView(commands,commandsLp);
+        LinearLayout flags=new LinearLayout(this);
+        LinearLayout.LayoutParams flagsLp=new LinearLayout.LayoutParams(-1,dp(54));
+        flagsLp.topMargin=dp(9);
+        reverseButton=pill(getString(R.string.record_reverse),SURFACE2);
+        reverseButton.setOnClickListener(v->{press(v);addEvent("REVERSE","Marche arrière");});
+        twoSidesButton=pill(getString(R.string.record_both_sides),SURFACE2);
+        twoSidesButton.setOnClickListener(v->{press(v);addEvent("TWO_SIDES","2 côtés");});
+        flags.addView(reverseButton,new LinearLayout.LayoutParams(0,-1,1));
+        LinearLayout.LayoutParams second=new LinearLayout.LayoutParams(0,-1,1);
+        second.leftMargin=dp(8);
+        flags.addView(twoSidesButton,second);
+        if(recording)p.addView(flags,flagsLp);
+        setFlagEnabled(recording&&!paused);
+        LinearLayout stats=new LinearLayout(this);
+        stats.setPadding(0,dp(14),0,dp(8));
+        recordDistance=metric(formatDistance(recordedDistance),getString(R.string.metric_distance));
+        recordPoints=metric(String.valueOf(tracker==null?0:tracker.points.size()),getString(R.string.metric_points));
+        recordEvents=metric(String.valueOf(tracker==null?0:tracker.events.size()),getString(R.string.metric_markers));
+        stats.addView(recordDistance,new LinearLayout.LayoutParams(0,dp(67),1.2f));
+        LinearLayout.LayoutParams st1=new LinearLayout.LayoutParams(0,dp(67),1);
+        st1.leftMargin=dp(7);
+        stats.addView(recordPoints,st1);
+        LinearLayout.LayoutParams st2=new LinearLayout.LayoutParams(0,dp(67),1);
+        st2.leftMargin=dp(7);
+        stats.addView(recordEvents,st2);
+        p.addView(stats);
         LinearLayout live=new LinearLayout(this);
-        RecordingSummary.Snapshot liveStats=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
-        recordElapsed=metric(formatDuration(liveStats.elapsedMs),getString(R.string.metric_duration));
-        recordAverage=metric(String.format(Locale.getDefault(),"%.1f km/h",liveStats.averageKmh),getString(R.string.metric_average));
-        live.addView(recordElapsed,new LinearLayout.LayoutParams(0,dp(66),1));
-        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(66),1);avgLp.leftMargin=dp(8);
-        live.addView(recordAverage,avgLp);p.addView(live);
-        LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);recordMain=pill(getString(recording?R.string.record_finish:R.string.record_start),recording?RED:accent);recordMain.setOnClickListener(v->{press(v);if(recording)finishRecording();else startRecording();});main.addView(recordMain,new LinearLayout.LayoutParams(-1,dp(60)));LinearLayout flags=new LinearLayout(this);flags.setPadding(0,dp(10),0,0);main.addView(flags);reverseButton=pill(getString(R.string.record_reverse),SURFACE2);twoSidesButton=pill(getString(R.string.record_both_sides),SURFACE2);reverseButton.setOnClickListener(v->addEvent("REVERSE","Marche arrière"));twoSidesButton.setOnClickListener(v->addEvent("TWO_SIDES","2 côtés"));LinearLayout.LayoutParams b1=new LinearLayout.LayoutParams(0,dp(54),1);b1.leftMargin=dp(8);flags.addView(reverseButton,b1);LinearLayout.LayoutParams b2=new LinearLayout.LayoutParams(0,dp(54),1);b2.leftMargin=dp(7);flags.addView(twoSidesButton,b2);p.addView(main);
-        pauseButton=pill(getString(paused?R.string.notification_resume:R.string.notification_pause),SURFACE2);pauseButton.setOnClickListener(v->togglePause());LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(46));pp.topMargin=dp(8);p.addView(pauseButton,pp);setFlagEnabled(recording);TextView info=text(getString(R.string.record_help),12,Typeface.NORMAL,MUTED);info.setPadding(0,dp(17),0,0);p.addView(info);sv.addView(p);return sv;
+        RecordingSummary.Snapshot snap=RecordingSummary.from(recordingStarted,recordedDistance,System.currentTimeMillis());
+        recordElapsed=compactMetric(formatDuration(snap.elapsedMs),getString(R.string.metric_duration));
+        recordAverage=compactMetric(String.format(Locale.getDefault(),"%.1f km/h",snap.averageKmh),getString(R.string.metric_average));
+        live.addView(recordElapsed,new LinearLayout.LayoutParams(0,dp(48),1));
+        LinearLayout.LayoutParams av=new LinearLayout.LayoutParams(0,dp(48),1);
+        av.leftMargin=dp(7);
+        live.addView(recordAverage,av);
+        p.addView(live);
+        scroll.addView(p);
+        return scroll;
     }
 
     private View routesPage(){
         ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.tab_routes),store.routeFiles().size()+" tournée(s) • dossiers et parcours");
-        LinearLayout actions=new LinearLayout(this);TextView imp=pill(getString(R.string.routes_import),accent);imp.setOnClickListener(v->{press(v);importGpx();});TextView rec=pill(getString(R.string.routes_new),SURFACE2);rec.setOnClickListener(v->{press(v);showTab("record",true);});TextView folder=pill(getString(R.string.routes_folder),SURFACE2);folder.setOnClickListener(v->{press(v);createFolderDialog();});
-        actions.addView(imp,new LinearLayout.LayoutParams(0,dp(48),1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(48),1);rp.leftMargin=dp(6);actions.addView(rec,rp);LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(48),.8f);fp.leftMargin=dp(6);actions.addView(folder,fp);p.addView(actions);
+        LinearLayout actions=new LinearLayout(this);TextView imp=pill(getString(R.string.routes_import),accent);imp.setOnClickListener(v->{press(v);importGpx();});TextView folder=pill(getString(R.string.routes_folder),SURFACE2);folder.setOnClickListener(v->{press(v);createFolderDialog();});
+        actions.addView(imp,new LinearLayout.LayoutParams(0,dp(54),1));LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(54),1);fp.leftMargin=dp(9);actions.addView(folder,fp);p.addView(actions);
         EditText search=new EditText(this);search.setHint(getString(R.string.routes_search));search.setHintTextColor(theme.secondaryContent);search.setTextColor(TEXT);search.setTextSize(14);search.setSingleLine(true);search.setPadding(dp(15),0,dp(15),0);search.setBackground(surface(SURFACE,18));LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(-1,dp(48));sl.topMargin=dp(12);p.addView(search,sl);
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams ll=new LinearLayout.LayoutParams(-1,-2);ll.topMargin=dp(5);p.addView(list,ll);List<File> files=store.routeFiles();renderRoutes(list,files,"");
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int count,int after){}public void onTextChanged(CharSequence s,int st,int before,int count){renderRoutes(list,files,s.toString());}public void afterTextChanged(Editable e){}});sv.addView(p);return sv;
@@ -244,23 +514,72 @@ public class RoutixActivity extends AppCompatActivity {
         LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);TextView name=text(store.displayName(f),17,Typeface.BOLD,TEXT);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);names.addView(name);String folder=folderStore.folderOf(f);String source=f.getName().startsWith("Import_")?"IMPORT GPX":"TERRAIN ROUTIX";names.addView(text((folder.isEmpty()?"RACINE":folder.toUpperCase(Locale.ROOT))+" • "+formatDate(f.lastModified())+" • "+source,10,Typeface.NORMAL,MUTED));head.addView(names,new LinearLayout.LayoutParams(0,-2,1));TextView more=icon("•••");more.setOnClickListener(v->{press(v);routeMenu(f,s);});head.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));card.addView(head);
         RoutePreviewView preview=new RoutePreviewView(this);preview.setPoints(s.points);preview.setClipToOutline(true);preview.setBackground(surface(SURFACE2,18));LinearLayout.LayoutParams pv=new LinearLayout.LayoutParams(-1,dp(110));pv.topMargin=dp(10);card.addView(preview,pv);
         LinearLayout stats=new LinearLayout(this);stats.setPadding(0,dp(10),0,dp(9));stats.addView(summaryStat("DISTANCE",formatDistance(s.distanceM)),new LinearLayout.LayoutParams(0,-2,1));stats.addView(summaryStat("DURÉE",formatDuration(s.durationMs)),new LinearLayout.LayoutParams(0,-2,1));stats.addView(summaryStat("POINTS",String.valueOf(s.points.size())),new LinearLayout.LayoutParams(0,-2,1));stats.addView(summaryStat("REPÈRES",String.valueOf(s.events.size())),new LinearLayout.LayoutParams(0,-2,1));card.addView(stats);
-        LinearLayout a=new LinearLayout(this);TextView guide=pill(getString(R.string.action_start),accent);guide.setOnClickListener(v->{press(v);startGuidance(s);});TextView plan=pill("Plan",SURFACE2);plan.setOnClickListener(v->{press(v);PrintablePlan.open(this,s,store.displayName(f));});TextView lab=pill(getString(R.string.routes_starter),SURFACE2);lab.setOnClickListener(v->{press(v);startGuidance(s);});a.addView(guide,new LinearLayout.LayoutParams(0,dp(52),1.2f));LinearLayout.LayoutParams p1=new LinearLayout.LayoutParams(0,dp(52),.8f);p1.leftMargin=dp(6);a.addView(plan,p1);LinearLayout.LayoutParams p2=new LinearLayout.LayoutParams(0,dp(52),.9f);p2.leftMargin=dp(6);a.addView(lab,p2);card.addView(a);
+        LinearLayout a=new LinearLayout(this);TextView guide=pill(getString(R.string.action_start),accent);guide.setOnClickListener(v->{press(v);startGuidance(s);});TextView plan=pill("Plan",SURFACE2);plan.setOnClickListener(v->{press(v);PrintablePlan.open(this,s,store.displayName(f));});a.addView(guide,new LinearLayout.LayoutParams(0,dp(56),1.3f));LinearLayout.LayoutParams p1=new LinearLayout.LayoutParams(0,dp(56),1);p1.leftMargin=dp(8);a.addView(plan,p1);card.addView(a);
         TextView details=pill(getString(R.string.routes_view),SURFACE2);details.setOnClickListener(v->{detailFile=f;showTab("detail",true);});LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-1,dp(52));dl.topMargin=dp(8);card.addView(details,dl);
         animateCard(card,index);return card;
     }
 
+
     private View routeDetailPage(File file){
-        RouteStore.Summary route=store.parse(file);ScrollView scroll=new ScrollView(this);
-        LinearLayout page=page(store.displayName(file),formatDistance(route.distanceM)+" · "+formatDuration(route.durationMs));
-        TextView back=pill(getString(R.string.routes_all),SURFACE2);back.setOnClickListener(v->showTab("routes",true));page.addView(back,new LinearLayout.LayoutParams(-1,dp(52)));
-        RoutePreviewView preview=new RoutePreviewView(this);preview.setPoints(route.points);LinearLayout.LayoutParams previewLayout=new LinearLayout.LayoutParams(-1,dp(200));previewLayout.topMargin=dp(16);page.addView(preview,previewLayout);
-        page.addView(section(getString(R.string.routes_ready)));TextView start=pill(getString(R.string.routes_guide),accent);start.setOnClickListener(v->startGuidance(route));page.addView(start,new LinearLayout.LayoutParams(-1,dp(58)));
-        menu(page,getString(R.string.routes_plan),route.events.size()+" repères · "+route.points.size()+" points",()->PrintablePlan.open(this,route,store.displayName(file)));menu(page,getString(R.string.routes_improve),getString(R.string.routes_reorder_help),()->improveRoute(file,route));
+        RouteStore.Summary route=store.parse(file);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout p=page(store.displayName(file),formatDistance(route.distanceM)+"  •  "+formatDuration(route.durationMs));
+        TextView back=pill("‹  "+getString(R.string.routes_all),SURFACE2);
+        back.setOnClickListener(v->{press(v);showTab("routes",true);});
+        p.addView(back,new LinearLayout.LayoutParams(-1,dp(50)));
+        RoutePreviewView preview=new RoutePreviewView(this);
+        preview.setPoints(route.points);
+        preview.setClipToOutline(true);
+        preview.setBackground(surface(SURFACE2,24));
+        LinearLayout.LayoutParams previewLp=new LinearLayout.LayoutParams(-1,dp(200));
+        previewLp.topMargin=dp(14);
+        p.addView(preview,previewLp);
+        LinearLayout quick=new LinearLayout(this);
+        LinearLayout.LayoutParams quickLp=new LinearLayout.LayoutParams(-1,dp(58));
+        quickLp.topMargin=dp(12);
+        TextView start=pill(getString(R.string.routes_guide),accent);
+        start.setOnClickListener(v->{press(v);startGuidance(route);});
+        quick.addView(start,new LinearLayout.LayoutParams(0,-1,1.25f));
+        TextView plan=pill(getString(R.string.routes_plan),SURFACE2);
+        plan.setOnClickListener(v->{press(v);PrintablePlan.open(this,route,store.displayName(file));});
+        LinearLayout.LayoutParams planLp=new LinearLayout.LayoutParams(0,-1,1);
+        planLp.leftMargin=dp(9);
+        quick.addView(plan,planLp);
+        p.addView(quick,quickLp);
+        p.addView(section(getString(R.string.routes_ready)));
+        LinearLayout stats=new LinearLayout(this);
+        stats.setPadding(dp(10),dp(14),dp(10),dp(14));
+        stats.setBackground(surface(SURFACE,22));
+        stats.addView(summaryStat(getString(R.string.metric_distance),formatDistance(route.distanceM)),new LinearLayout.LayoutParams(0,-2,1));
+        stats.addView(summaryStat(getString(R.string.metric_duration),formatDuration(route.durationMs)),new LinearLayout.LayoutParams(0,-2,1));
+        stats.addView(summaryStat(getString(R.string.metric_points),String.valueOf(route.points.size())),new LinearLayout.LayoutParams(0,-2,1));
+        stats.addView(summaryStat(getString(R.string.metric_markers),String.valueOf(route.events.size())),new LinearLayout.LayoutParams(0,-2,1));
+        p.addView(stats);
+        p.addView(section(getString(R.string.routes_improve)));
+        menu(p,getString(R.string.routes_improve),getString(R.string.routes_reorder_help),()->improveRoute(file,route));
         StreetPassageStore.Insight insight=new StreetPassageStore(this).read(file.getName());
-        if(insight!=null){page.addView(section("Intelligence de tournée"));LinearLayout intel=new LinearLayout(this);intel.setOrientation(LinearLayout.VERTICAL);intel.setPadding(dp(14),dp(12),dp(14),dp(12));intel.setBackground(surface(SURFACE,20));intel.addView(text(insight.unique+" rues reconnues • "+insight.passages+" passages • "+insight.repeats+" répétition"+(insight.repeats>1?"s":""),13,Typeface.BOLD,TEXT));intel.addView(text(formatDistance(insight.coveredMeters)+" de portions reconnues • "+insight.directedCells+" secteurs directionnels"+(insight.opposite>0?" • "+insight.opposite+" parcourus dans les 2 sens":""),11,Typeface.NORMAL,MUTED));int shown=Math.min(8,insight.streets.size());for(int i=0;i<shown;i++)intel.addView(text(insight.streets.get(i),11,Typeface.NORMAL,MUTED));if(insight.streets.size()>shown)intel.addView(text("+"+(insight.streets.size()-shown)+" autres rues",11,Typeface.BOLD,accent));page.addView(intel);}
-        menu(page,"Dossier",folderStore.folderOf(file).isEmpty()?getString(R.string.routes_no_folder):folderStore.folderOf(file),()->moveRouteDialog(file));
-        menu(page,getString(R.string.action_rename),store.displayName(file),()->rename(file));menu(page,getString(R.string.action_share),"Fichier GPX",()->share(file));
-        menu(page,"Tous les outils","Favoris, duplication, amélioration, GPX Lab et suppression",()->routeMenu(file,route));scroll.addView(page);return scroll;
+        if(insight!=null){
+            p.addView(section("Intelligence de tournée"));
+            LinearLayout intel=new LinearLayout(this);
+            intel.setOrientation(LinearLayout.VERTICAL);
+            intel.setPadding(dp(16),dp(16),dp(16),dp(16));
+            intel.setBackground(surface(SURFACE,22));
+            intel.addView(text(insight.unique+" rues · "+insight.passages+" passages · "+insight.repeats+" répétitions",15,Typeface.BOLD,TEXT));
+            TextView sub=text(formatDistance(insight.coveredMeters)+" parcourus • "+insight.directedCells+" secteurs"+(insight.opposite>0?" • "+insight.opposite+" dans les deux sens":""),12,Typeface.NORMAL,MUTED);
+            sub.setPadding(0,dp(7),0,dp(7));
+            intel.addView(sub);
+            int shown=Math.min(8,insight.streets.size());
+            for(int i=0;i<shown;i++)intel.addView(text("•  "+insight.streets.get(i),12,Typeface.NORMAL,MUTED));
+            if(insight.streets.size()>shown)intel.addView(text("+"+(insight.streets.size()-shown)+" autres rues",12,Typeface.BOLD,accent));
+            p.addView(intel);
+        }
+        p.addView(section("Fichier et classement"));
+        menu(p,"Dossier",folderStore.folderOf(file).isEmpty()?getString(R.string.routes_no_folder):folderStore.folderOf(file),()->moveRouteDialog(file));
+        menu(p,getString(R.string.action_rename),store.displayName(file),()->rename(file));
+        menu(p,getString(R.string.action_share),"GPX",()->share(file));
+        menu(p,"Tous les outils","Favoris · copie · KML / CSV · GPX Lab · suppression",()->routeMenu(file,route));
+        scroll.addView(p);
+        return scroll;
     }
 
     private void routeMenu(File f,RouteStore.Summary s){String[] x={store.isFavorite(f)?getString(R.string.routes_remove_favourite):getString(R.string.routes_add_favourite),getString(R.string.routes_move),getString(R.string.action_rename),getString(R.string.action_duplicate),getString(R.string.routes_improve),"Partager le GPX","Générer le plan","Avancé : GPX Lab",getString(R.string.export_kml),getString(R.string.export_csv),getString(R.string.action_delete)};new RoutixDialogs.Builder(this).setTitle(store.displayName(f)).setMessage(formatDistance(s.distanceM)+" • "+formatDuration(s.durationMs)+" • "+s.points.size()+" points").setItems(x,(d,w)->{if(w==0){store.setFavorite(f,!store.isFavorite(f));showTab("routes",false);}else if(w==1)moveRouteDialog(f);else if(w==2)rename(f);else if(w==3){File copy=store.duplicate(f);if(copy!=null)folderStore.move(copy,folderStore.folderOf(f));showTab("routes",false);}else if(w==4)improveRoute(f,s);else if(w==5)share(f);else if(w==6)PrintablePlan.open(this,s,store.displayName(f));else if(w==7){prefs.edit().putString("gpx_lab_file",f.getName()).apply();showTab("gpxlab",true);}else if(w==8)shareConverted(f,true);else if(w==9)shareConverted(f,false);else confirmDelete(f);}).show();}
@@ -302,63 +621,229 @@ public class RoutixActivity extends AppCompatActivity {
     }
     private void share(File f){try{Uri u=FileProvider.getUriForFile(this,getPackageName()+".files",f);Intent i=new Intent(Intent.ACTION_SEND);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_STREAM,u);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,getString(R.string.routes_share_title)));}catch(Exception e){toast(getString(R.string.routes_share_failed));}}
 
+
     private View gpxLabPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_gpx),"");List<File> files=store.routeFiles();if(files.isEmpty()){p.addView(infoCard(getString(R.string.routes_no_gpx),getString(R.string.routes_analysis_no_files)));sv.addView(p);return sv;}File f=files.get(0);String wanted=prefs.getString("gpx_lab_file",null);if(wanted!=null)for(File x:files)if(x.getName().equals(wanted)){f=x;break;}final File selected=f;RouteStore.Summary after=store.parse(selected);int input=prefs.getInt("import_input_"+selected.getName(),after.points.size()),output=prefs.getInt("import_output_"+selected.getName(),after.points.size()),invalid=prefs.getInt("import_invalid_"+selected.getName(),0),dup=prefs.getInt("import_duplicates_"+selected.getName(),0),simp=prefs.getInt("import_simplified_"+selected.getName(),Math.max(0,input-output));boolean matched=prefs.getBoolean("import_matched_"+selected.getName(),false);int confidence=prefs.getInt("import_confidence_"+selected.getName(),matched?0:100),generated=prefs.getInt("import_generated_steps_"+selected.getName(),0);
-        TextView choose=pill("Fichier : "+store.displayName(selected)+"  ▾",SURFACE2);choose.setOnClickListener(v->{String[] labels=new String[files.size()];for(int i=0;i<files.size();i++)labels[i]=store.displayName(files.get(i));new RoutixDialogs.Builder(this).setTitle("GPX à analyser").setItems(labels,(d,w)->{prefs.edit().putString("gpx_lab_file",files.get(w).getName()).apply();showTab("gpxlab",false);}).show();});p.addView(choose,new LinearLayout.LayoutParams(-1,dp(50)));p.addView(section("Avant / après"));LinearLayout compare=new LinearLayout(this);compare.addView(bigMetric(String.valueOf(input),"AVANT\npoints bruts",PEACH),new LinearLayout.LayoutParams(0,dp(112),1));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,dp(112),1);cp.leftMargin=dp(9);compare.addView(bigMetric(String.valueOf(output),"APRÈS\npoints utiles",GREEN),cp);p.addView(compare);TextView delta=infoCard("Transformation","−"+Math.max(0,input-output)+" points • "+invalid+" invalides • "+dup+" doublons • "+simp+" simplifiés");LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-1,-2);dl.topMargin=dp(9);p.addView(delta,dl);p.addView(section("Pipeline"));p.addView(stage("01","Validation GPS",invalid+" points rejetés",invalid>0?PEACH:GREEN));p.addView(stage("02","Déduplication",dup+" points trop proches supprimés",dup>0?BLUE:GREEN));p.addView(stage("03","Simplification conservatrice",simp+" points retirés sans casser les retours",MAUVE));p.addView(stage("04","Recalage routier",matched?("Actif • confiance "+confidence+" % • "+generated+" étapes ajoutées"):"Non appliqué / trace propre conservée",matched?TEAL:MUTED));p.addView(section("Contrôles"));p.addView(toggleRow("Optimiseur GPX","OFF = import brut : aucun point supprimé, simplifié ou recalé. ON = nettoyage et recalage routier.","gpx_match_roads",true,()->{}));sv.addView(p);return sv;
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout p=page(getString(R.string.screen_gpx),"Analyse de la qualité des traces GPS");
+        List<File> files=store.routeFiles();
+        if(files.isEmpty()){
+            p.addView(infoCard(getString(R.string.routes_no_gpx),getString(R.string.routes_analysis_no_files)));
+            TextView go=pill(getString(R.string.routes_import),accent);
+            go.setOnClickListener(v->{press(v);importGpx();});
+            LinearLayout.LayoutParams l=new LinearLayout.LayoutParams(-1,dp(56));
+            l.topMargin=dp(14);
+            p.addView(go,l);
+            scroll.addView(p);
+            return scroll;
+        }
+        File f=files.get(0);
+        String wanted=prefs.getString("gpx_lab_file",null);
+        if(wanted!=null)for(File x:files)if(x.getName().equals(wanted)){f=x;break;}
+        final File selected=f;
+        RouteStore.Summary route=store.parse(selected);
+        int input=prefs.getInt("import_input_"+selected.getName(),route.points.size());
+        int output=prefs.getInt("import_output_"+selected.getName(),route.points.size());
+        int invalid=prefs.getInt("import_invalid_"+selected.getName(),0);
+        int duplicates=prefs.getInt("import_duplicates_"+selected.getName(),0);
+        int simplified=prefs.getInt("import_simplified_"+selected.getName(),Math.max(0,input-output));
+        boolean matched=prefs.getBoolean("import_matched_"+selected.getName(),false);
+        int confidence=prefs.getInt("import_confidence_"+selected.getName(),matched?0:100);
+        int generated=prefs.getInt("import_generated_steps_"+selected.getName(),0);
+        TextView choose=pill("◈  "+store.displayName(selected)+"  ⌄",SURFACE2);
+        choose.setContentDescription("Sélectionner un tracé GPX à analyser");
+        choose.setOnClickListener(v->{
+            String[] labels=new String[files.size()];
+            for(int i=0;i<files.size();i++)labels[i]=store.displayName(files.get(i));
+            new RoutixDialogs.Builder(this).setTitle("GPX à analyser").setItems(labels,(d,w)->{
+                prefs.edit().putString("gpx_lab_file",files.get(w).getName()).apply();
+                showTab("gpxlab",false);
+            }).show();
+        });
+        p.addView(choose,new LinearLayout.LayoutParams(-1,dp(54)));
+        p.addView(section("Avant / après"));
+        LinearLayout compare=new LinearLayout(this);
+        compare.addView(bigMetric(String.valueOf(input),"POINTS BRUTS",PEACH),new LinearLayout.LayoutParams(0,dp(105),1));
+        LinearLayout.LayoutParams resultLp=new LinearLayout.LayoutParams(0,dp(105),1);
+        resultLp.leftMargin=dp(10);
+        compare.addView(bigMetric(String.valueOf(output),"POINTS CONSERVÉS",GREEN),resultLp);
+        p.addView(compare);
+        p.addView(infoCard("Nettoyage","−"+Math.max(0,input-output)+" points • "+invalid+" invalides • "+duplicates+" doublons • "+simplified+" simplifiés"));
+        p.addView(section("Étapes du traitement"));
+        p.addView(stage("01","Validation des positions",invalid+" points rejetés",invalid>0?PEACH:GREEN));
+        p.addView(stage("02","Déduplication",duplicates+" points trop proches supprimés",duplicates>0?BLUE:GREEN));
+        p.addView(stage("03","Simplification prudente",simplified+" points retirés sans perte de trajet",MAUVE));
+        p.addView(stage("04","Recalage routier",matched?
+            "Actif · confiance "+confidence+" % · "+generated+" étapes supplémentaires":
+            "Non appliqué : trace d'origine préservée",matched?TEAL:MUTED));
+        p.addView(section("À l'import"));
+        p.addView(toggleRow("Optimiseur GPX",
+            "Désactivé : import brut ; activé : nettoyage et recalage routier",
+            "gpx_match_roads",true,()->{}));
+        scroll.addView(p);
+        return scroll;
     }
 
-    private View morePage(){ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_more),"");
-        menu(p,getString(R.string.screen_stats),"",()->showTab("stats",true));menu(p,getString(R.string.screen_settings),"",()->showTab("settings",true));
-        menu(p,getString(R.string.menu_offline),"",this::offlineMenu);menu(p,getString(R.string.menu_updates),"",this::updateMenu);menu(p,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);menu(p,getString(R.string.menu_privacy),"",()->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://1337detailing.github.io/Routix/privacy.html"))));
-        TextView advanced=pill(getString(R.string.advanced_settings),SURFACE2);p.addView(advanced,new LinearLayout.LayoutParams(-1,dp(52)));LinearLayout extra=new LinearLayout(this);extra.setOrientation(LinearLayout.VERTICAL);extra.setVisibility(View.GONE);menu(extra,getString(R.string.screen_gpx),"",()->showTab("gpxlab",true));p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
-    private View statsPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_stats),"");
-        List<SessionStatsStore.Entry> entries=new SessionStatsStore(prefs).entries();
-        long totalDuration=SessionStatsStore.totalDuration(entries);double totalDistance=SessionStatsStore.totalDistance(entries);
-        double avgKmh=totalDuration>0?(totalDistance/1000d)/(totalDuration/3600000d):0;
-        LinearLayout summary=new LinearLayout(this);summary.setPadding(0,0,0,dp(10));
-        summary.addView(bigMetric(String.valueOf(entries.size()),getString(R.string.metric_routes),BLUE),new LinearLayout.LayoutParams(0,dp(100),1));
-        LinearLayout.LayoutParams sm=new LinearLayout.LayoutParams(0,dp(100),1);sm.leftMargin=dp(8);summary.addView(bigMetric(formatDistance(totalDistance),getString(R.string.metric_distance),GREEN),sm);
-        p.addView(summary);
-        LinearLayout totals=new LinearLayout(this);
-        totals.addView(bigMetric(formatDuration(totalDuration),getString(R.string.metric_duration),MAUVE),new LinearLayout.LayoutParams(0,dp(100),1));
-        LinearLayout.LayoutParams av=new LinearLayout.LayoutParams(0,dp(100),1);av.leftMargin=dp(8);totals.addView(bigMetric(String.format(Locale.getDefault(),"%.1f km/h",avgKmh),getString(R.string.stats_average_short),PEACH),av);p.addView(totals);
-        p.addView(section(getString(R.string.stats_history)));
-        if(entries.isEmpty())p.addView(infoCard(getString(R.string.stats_no_routes),getString(R.string.stats_no_routes_summary)));
-        else for(int i=0;i<Math.min(30,entries.size());i++){SessionStatsStore.Entry e=entries.get(i);String name=e.route.isEmpty()?"Tournée":e.route.replaceFirst("\\.gpx$","");String body=formatDate(e.started)+" • "+formatDistance(e.distanceM)+" • "+formatDuration(e.durationMs);p.addView(infoCard(name,body));}
-        sv.addView(p);return sv;
+    private View morePage(){
+        ScrollView sv=new ScrollView(this);
+        sv.setFillViewport(false);
+        LinearLayout p=page(getString(R.string.screen_more),"Votre espace Routix");
+        p.addView(section("Tableau de bord"));
+        menu(p,getString(R.string.screen_stats),"Bilan, distance et historique",()->showTab("stats",true));
+        menu(p,getString(R.string.screen_gpx),"Qualité et optimisation des traces",()->showTab("gpxlab",true));
+        p.addView(section("Personnalisation"));
+        menu(p,getString(R.string.screen_settings),"Carte, interface et navigation",()->showTab("settings",true));
+        menu(p,getString(R.string.menu_offline),"Cartes disponibles sans connexion",this::offlineMenu);
+        p.addView(section("Application"));
+        menu(p,getString(R.string.menu_updates),"Vérifier et installer les mises à jour",this::updateMenu);
+        menu(p,getString(R.string.menu_diagnostics),"Exporter un diagnostic",this::exportDiagnostics);
+        menu(p,getString(R.string.menu_privacy),"Confidentialité et données",()->startActivity(
+            new Intent(Intent.ACTION_VIEW,Uri.parse("https://1337detailing.github.io/Routix/privacy.html"))));
+        sv.addView(p);
+        return sv;
     }
+
+
+    private View statsPage(){
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout p=page(getString(R.string.screen_stats),"Votre activité en un coup d'œil");
+        List<SessionStatsStore.Entry> entries=new SessionStatsStore(prefs).entries();
+        long duration=SessionStatsStore.totalDuration(entries);
+        double distance=SessionStatsStore.totalDistance(entries);
+        double average=duration>0?(distance/1000d)/(duration/3600000d):0;
+        LinearLayout top=new LinearLayout(this);
+        top.addView(bigMetric(String.valueOf(entries.size()),getString(R.string.metric_routes),BLUE),new LinearLayout.LayoutParams(0,dp(110),1));
+        LinearLayout.LayoutParams topRight=new LinearLayout.LayoutParams(0,dp(110),1);
+        topRight.leftMargin=dp(10);
+        top.addView(bigMetric(formatDistance(distance),getString(R.string.metric_distance),GREEN),topRight);
+        p.addView(top);
+        LinearLayout second=new LinearLayout(this);
+        LinearLayout.LayoutParams rowLp=new LinearLayout.LayoutParams(-1,-2);
+        rowLp.topMargin=dp(10);
+        second.addView(bigMetric(formatDuration(duration),getString(R.string.metric_duration),MAUVE),new LinearLayout.LayoutParams(0,dp(110),1));
+        LinearLayout.LayoutParams avgLp=new LinearLayout.LayoutParams(0,dp(110),1);
+        avgLp.leftMargin=dp(10);
+        second.addView(bigMetric(String.format(Locale.getDefault(),"%.1f km/h",average),getString(R.string.stats_average_short),PEACH),avgLp);
+        p.addView(second,rowLp);
+        p.addView(section(getString(R.string.stats_history)));
+        if(entries.isEmpty()){
+            p.addView(infoCard(getString(R.string.stats_no_routes),getString(R.string.stats_no_routes_summary)));
+            TextView start=pill(getString(R.string.routes_new),accent);
+            start.setOnClickListener(v->{press(v);showTab("record",true);});
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(56));lp.topMargin=dp(14);
+            p.addView(start,lp);
+        }else{
+            for(int i=0;i<Math.min(30,entries.size());i++){
+                SessionStatsStore.Entry e=entries.get(i);
+                String name=e.route.isEmpty()?"Tournée":e.route.replaceFirst("\\.gpx$","");
+                String body=formatDate(e.started)+" · "+formatDistance(e.distanceM)+" · "+formatDuration(e.durationMs);
+                p.addView(infoCard(name,body));
+            }
+        }
+        scroll.addView(p);
+        return scroll;
+    }
+
     private void menu(LinearLayout p,String title,String subtitle,Runnable action){LinearLayout row=settingsRow(title,subtitle);row.setMinimumHeight(dp(64));row.setOnClickListener(v->action.run());p.addView(row);}
+
     private View settingsPage(){
-        ScrollView sv=new ScrollView(this);LinearLayout p=page(getString(R.string.screen_settings),"");
+        ScrollView sv=new ScrollView(this);
+        LinearLayout p=page(getString(R.string.screen_settings),"Personnalisez Routix à votre rythme");
+        p.addView(section(getString(R.string.section_display)));
+        p.addView(stringChoiceRow(getString(R.string.setting_app_theme),"app_theme",
+            new String[]{"dark","light","system"},
+            new String[]{getString(R.string.theme_dark),getString(R.string.theme_light),getString(R.string.theme_auto)},
+            "dark",this::refreshUiTheme));
+        if(android.os.Build.VERSION.SDK_INT>=31)p.addView(toggleRow(
+            getString(R.string.setting_dynamic_colors),getString(R.string.setting_dynamic_colors_summary),
+            "dynamic_colors",false,this::refreshUiTheme));
         p.addView(stringChoiceRow(getString(R.string.language_title),"app_language",
             new String[]{"","fr","en","ru","de","pl"},
-            new String[]{getString(R.string.language_auto),getString(R.string.language_french),getString(R.string.language_english),
-                getString(R.string.language_russian),getString(R.string.language_german),getString(R.string.language_polish)},
+            new String[]{getString(R.string.language_auto),getString(R.string.language_french),
+                getString(R.string.language_english),getString(R.string.language_russian),
+                getString(R.string.language_german),getString(R.string.language_polish)},
             "",()->androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
                 androidx.core.os.LocaleListCompat.forLanguageTags(prefs.getString("app_language","")))));
-        
-        p.addView(colorSettingRow(getString(R.string.setting_recording_trace),"recording_color",TEAL,()->{drawRecordingTrace();if(modern!=null)modern.refreshStyle();}));p.addView(colorSettingRow(getString(R.string.setting_guidance_trace),"guidance_color",accent,()->{redrawGuidance();if(modern!=null)modern.refreshStyle();}));p.addView(colorSettingRow(getString(R.string.setting_ahead_trace),"ahead_color",PEACH,()->{redrawGuidance();if(modern!=null)modern.refreshStyle();}));p.addView(stringChoiceRow(getString(R.string.setting_guidance_style),"guidance_trace_style",new String[]{"solid","dashed","arrows","soft"},new String[]{"━━━━  Ligne pleine","━ ━ ━  Ligne pointillée","➜ ➜ ➜  Flèches de direction","━━━━  Progressif doux"},"arrows",()->{if(modern!=null)modern.refreshStyle();redrawGuidance();}));
-        p.addView(colorSettingRow(getString(R.string.setting_marker_color),"marker_color",PEACH,()->{if(modern!=null)modern.refreshStyle();}));
-        p.addView(stringChoiceRow(getString(R.string.setting_basemap_style),"basemap_style",new String[]{"routix","vela"},new String[]{getString(R.string.map_style_routix),getString(R.string.map_style_vela)},"routix",this::applyMapStyle));
-        p.addView(stringChoiceRow(getString(R.string.setting_map_background),"map_appearance",new String[]{"theme","light","dark"},new String[]{getString(R.string.map_theme_auto),getString(R.string.map_theme_light),getString(R.string.map_theme_dark)},"theme",this::applyMapStyle));
-        p.addView(toggleRow(getString(R.string.setting_night_mode),getString(R.string.setting_night_summary),"auto_night",false,this::applyMapStyle));
-        p.addView(stringChoiceRow(getString(R.string.setting_position_icon),"position_icon",new String[]{"Camion","Voiture","Flèche","Point"},new String[]{getString(R.string.position_truck),getString(R.string.position_car),getString(R.string.position_arrow),getString(R.string.position_dot)},"Camion",()->{if(modern!=null){modern.onPause();modern.onStop();modern.onDestroy();modern=null;createModernMap();modern.onResume();}}));
-        p.addView(toggleRow(getString(R.string.setting_guide_departure),getString(R.string.setting_guide_departure_summary),"guide_to_start",true,()->{}));
-        p.addView(choiceRow(getString(R.string.setting_offroute),"offroute_m",new int[]{25,35,45,60,80},new String[]{"25 m","35 m","45 m","60 m","80 m"},45,()->{}));
-        p.addView(toggleRow(getString(R.string.setting_voice_markers),getString(R.string.setting_voice_summary),"voice_markers",true,()->{}));
-        p.addView(toggleRow(getString(R.string.setting_battery_saver),getString(R.string.setting_battery_summary),"battery_saver",true,this::applyRuntimePrefs));
-        p.addView(toggleRow(getString(R.string.setting_keep_screen),getString(R.string.setting_keep_screen_summary),"keep_screen",false,this::applyRuntimePrefs));
-        TextView advanced=pill(getString(R.string.advanced_settings),SURFACE2);LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(-1,dp(52));ap.topMargin=dp(16);p.addView(advanced,ap);
-        LinearLayout extra=new LinearLayout(this);extra.setOrientation(LinearLayout.VERTICAL);extra.setVisibility(View.GONE);
-        extra.addView(toggleRow(getString(R.string.setting_animations),getString(R.string.setting_animations_summary),"animations",true,()->{}));
-        extra.addView(choiceRow(getString(R.string.setting_animation_speed),"anim_speed",new int[]{120,180,220,320,450},new String[]{"Très rapide","Rapide","Équilibrée","Douce","Cinématique"},220,()->{}));
-        extra.addView(toggleRow(getString(R.string.setting_rich_animations),getString(R.string.setting_rich_animations_summary),"rich_animations",true,()->{}));
-        extra.addView(choiceRow(getString(R.string.setting_gps_accuracy),"record_accuracy",new int[]{20,30,45,60},new String[]{"20 m","30 m","45 m","60 m"},45,()->{}));
-        extra.addView(toggleRow(getString(R.string.setting_optimize_import),getString(R.string.setting_optimize_import_summary),"gpx_match_roads",false,()->{}));
+        p.addView(section(getString(R.string.section_map)));
+        p.addView(stringChoiceRow(getString(R.string.setting_basemap_style),"basemap_style",
+            new String[]{"routix","vela"},
+            new String[]{getString(R.string.map_style_routix),getString(R.string.map_style_vela)},
+            "routix",this::applyMapStyle));
+        p.addView(stringChoiceRow(getString(R.string.setting_map_background),"map_appearance",
+            new String[]{"theme","light","dark"},
+            new String[]{getString(R.string.map_theme_auto),getString(R.string.map_theme_light),
+                getString(R.string.map_theme_dark)},"theme",this::applyMapStyle));
+        p.addView(toggleRow(getString(R.string.setting_night_mode),
+            getString(R.string.setting_night_summary),"auto_night",false,this::applyMapStyle));
+        p.addView(stringChoiceRow(getString(R.string.setting_position_icon),"position_icon",
+            new String[]{"Camion","Voiture","Flèche","Point"},
+            new String[]{getString(R.string.position_truck),getString(R.string.position_car),
+                getString(R.string.position_arrow),getString(R.string.position_dot)},
+            "Camion",()->{if(modern!=null){modern.onPause();modern.onStop();modern.onDestroy();
+                modern=null;createModernMap();modern.onResume();}}));
+        p.addView(section(getString(R.string.section_navigation)));
+        p.addView(colorSettingRow(getString(R.string.setting_recording_trace),"recording_color",TEAL,
+            ()->{drawRecordingTrace();if(modern!=null)modern.refreshStyle();}));
+        p.addView(colorSettingRow(getString(R.string.setting_guidance_trace),"guidance_color",accent,
+            ()->{redrawGuidance();if(modern!=null)modern.refreshStyle();}));
+        p.addView(colorSettingRow(getString(R.string.setting_ahead_trace),"ahead_color",PEACH,
+            ()->{redrawGuidance();if(modern!=null)modern.refreshStyle();}));
+        p.addView(colorSettingRow(getString(R.string.setting_marker_color),"marker_color",PEACH,
+            ()->{if(modern!=null)modern.refreshStyle();}));
+        p.addView(stringChoiceRow(getString(R.string.setting_guidance_style),"guidance_trace_style",
+            new String[]{"solid","dashed","arrows","soft"},
+            new String[]{"Ligne continue","Ligne pointillée","Flèches de direction","Dégradé doux"},
+            "arrows",()->{if(modern!=null)modern.refreshStyle();redrawGuidance();}));
+        p.addView(toggleRow(getString(R.string.setting_guide_departure),
+            getString(R.string.setting_guide_departure_summary),"guide_to_start",true,()->{}));
+        p.addView(choiceRow(getString(R.string.setting_offroute),"offroute_m",
+            new int[]{25,35,45,60,80},new String[]{"25 m","35 m","45 m","60 m","80 m"},45,()->{}));
+        p.addView(toggleRow(getString(R.string.setting_voice_markers),
+            getString(R.string.setting_voice_summary),"voice_markers",true,()->{}));
+        p.addView(section(getString(R.string.section_performance)));
+        p.addView(toggleRow(getString(R.string.setting_battery_saver),
+            getString(R.string.setting_battery_summary),"battery_saver",true,this::applyRuntimePrefs));
+        p.addView(toggleRow(getString(R.string.setting_keep_screen),
+            getString(R.string.setting_keep_screen_summary),"keep_screen",false,this::applyRuntimePrefs));
+        TextView advanced=pill(getString(R.string.advanced_settings)+"  ⌄",SURFACE2);
+        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(-1,dp(54));
+        ap.topMargin=dp(18);
+        p.addView(advanced,ap);
+        LinearLayout extra=new LinearLayout(this);
+        extra.setOrientation(LinearLayout.VERTICAL);
+        extra.setVisibility(View.GONE);
+        extra.addView(toggleRow(getString(R.string.setting_animations),
+            getString(R.string.setting_animations_summary),"animations",true,()->{}));
+        extra.addView(choiceRow(getString(R.string.setting_animation_speed),"anim_speed",
+            new int[]{120,180,220,320,450},new String[]{"Très rapide","Rapide","Équilibrée","Douce","Cinématique"},220,()->{}));
+        extra.addView(toggleRow(getString(R.string.setting_rich_animations),
+            getString(R.string.setting_rich_animations_summary),"rich_animations",true,()->{}));
+        extra.addView(choiceRow(getString(R.string.setting_gps_accuracy),"record_accuracy",
+            new int[]{20,30,45,60},new String[]{"20 m","30 m","45 m","60 m"},45,()->{}));
+        extra.addView(toggleRow(getString(R.string.setting_optimize_import),
+            getString(R.string.setting_optimize_import_summary),"gpx_match_roads",false,()->{}));
         menu(extra,getString(R.string.menu_background_gps),"",this::openBackgroundGpsSettings);
-         menu(extra,getString(R.string.menu_battery),"",this::openBatterySettings);
-         menu(extra,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);p.addView(extra);advanced.setOnClickListener(v->extra.setVisibility(extra.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));sv.addView(p);return sv;}
+        menu(extra,getString(R.string.menu_battery),"",this::openBatterySettings);
+        menu(extra,getString(R.string.menu_diagnostics),"",this::exportDiagnostics);
+        p.addView(extra);
+        advanced.setOnClickListener(v->{press(v);boolean open=extra.getVisibility()!=View.VISIBLE;
+            extra.setVisibility(open?View.VISIBLE:View.GONE);
+            advanced.setText(getString(R.string.advanced_settings)+(open?"  ⌃":"  ⌄"));});
+        sv.addView(p);
+        return sv;
+    }
+    private void refreshUiTheme(){
+        applyThemeTokens();
+        accent=theme.accent;
+        if(root!=null)root.setBackgroundColor(BG);
+        RoutixTheme.systemBars(this,theme);
+        rebuildChrome();
+        if(mapAttribution!=null){
+            mapAttribution.setTextColor(MUTED);
+            mapAttribution.setBackground(surface(SURFACE,10));
+        }
+        applyMapStyle();
+    }
+
     private void showMapStyleMenu(){new RoutixDialogs.Builder(this).setTitle("Fond de carte").setItems(new String[]{"Clair","Sombre"},(d,w)->{prefs.edit().putString("map_appearance",w==0?"light":"dark").putBoolean("auto_night",false).apply();applyMapStyle();}).show();}
     private void offlineMenu(){List<String> labels=new ArrayList<>();labels.add("Carte en ligne");for(FranceOfflineManager.Pack p:FranceOfflineManager.PACKS)labels.add(p.label+(FranceOfflineManager.isInstalled(this,p)?" • installé":" • télécharger"));new RoutixDialogs.Builder(this).setTitle("Cartes hors ligne").setItems(labels.toArray(new String[0]),(d,w)->{if(w==0){prefs.edit().remove("offline_pack").apply();applyMapStyle();return;}FranceOfflineManager.Pack pack=FranceOfflineManager.PACKS.get(w-1);if(FranceOfflineManager.isInstalled(this,pack)){prefs.edit().putString("offline_pack",pack.id).apply();applyMapStyle();toast("Carte hors ligne : "+pack.label);}else try{FranceOfflineManager.download(this,pack);toast("Téléchargement lancé. Sélectionne le pack une fois terminé.");}catch(RuntimeException e){DiagnosticLog.error("offline download",e);toast("Téléchargement indisponible");}}).show();}
     private void updateMenu(){
@@ -426,7 +911,12 @@ public class RoutixActivity extends AppCompatActivity {
     private void togglePause(){if(tracker!=null)tracker.togglePause();showTab("record",false);}
     private void addEvent(String type,String label){if(tracker==null||!recording||paused||lastLocation==null){toast(getString(R.string.record_gps_required));return;}tracker.addEvent(type,label);successPulse("REVERSE".equals(type)?reverseButton:twoSidesButton);toast(label+" ajouté");}
     private void addGuidanceFlag(String type,String label){if(tracker==null||!guiding||lastLocation==null){toast("GPS ou tournée indisponible");return;}tracker.addGuidanceEvent(type,label);toast("Repère ajouté");}
-    private void setFlagEnabled(boolean on){for(TextView t:new TextView[]{reverseButton,twoSidesButton,pauseButton})if(t!=null){t.setEnabled(on);t.setAlpha(on?1:.38f);}}
+    private void setFlagEnabled(boolean on){
+        for(TextView t:new TextView[]{reverseButton,twoSidesButton})if(t!=null){
+            t.setEnabled(on);t.setAlpha(on?1:.48f);
+        }
+        if(pauseButton!=null){pauseButton.setEnabled(recording);pauseButton.setAlpha(recording?1:.48f);}
+    }
     private void offerDraftRecovery(){RouteStore.Summary draft=store.draftSummary();new RoutixDialogs.Builder(this).setTitle(getString(R.string.record_recovery_title)).setMessage(draft.points.size()+" points récupérables.").setNegativeButton(getString(R.string.record_later),null).setPositiveButton(getString(R.string.record_recover),(d,w)->{if(tracker!=null)tracker.recoverDraft(draft);showTab("record",true);}).show();}
 
     private void importGpx(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("*/*");i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,IMPORT_GPX);}
@@ -499,7 +989,7 @@ public class RoutixActivity extends AppCompatActivity {
     private boolean renderedTraceOffline,renderedTraceRecording;
     private void drawRecordingTrace(){
         // The recording page still receives GPS updates, but its map is not visible.
-        if(!"map".equals(selectedTab)){renderedTracePoints=-1;return;}
+        if(!"map".equals(selectedTab)&&!"record".equals(selectedTab)){renderedTracePoints=-1;return;}
         int count=tracker==null?0:tracker.points.size();
         int color=recordingColor(),width=dp(Math.max(5,prefs.getInt("route_width",10)-2));
         long session=tracker==null?-1:tracker.started;
@@ -592,20 +1082,140 @@ public class RoutixActivity extends AppCompatActivity {
         if(!recoveryOffered){recoveryOffered=true;if(!recording&&store.hasDraft())offerDraftRecovery();}
     }
 
-    private ScrollView scrollPanel(View panel){ScrollView scroll=new ScrollView(this);scroll.addView(panel);return scroll;}
-    private LinearLayout page(String title,String sub){LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);int pad=20;p.setPadding(dp(pad),dp(prefs.getBoolean("compact_ui",false)?12:18),dp(pad),dp(28));p.addView(text(title,30,Typeface.BOLD,TEXT));TextView s=text(sub,12,Typeface.NORMAL,MUTED);s.setPadding(0,dp(4),0,dp(14));p.addView(s);return p;}
-    private TextView section(String s){TextView t=text(s.toUpperCase(Locale.ROOT),10,Typeface.BOLD,accent);t.setPadding(0,dp(20),0,dp(8));return t;}
-    private TextView text(String s,float size,int style,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(Math.max(12,size));t.setTextColor(theme.readable(color));t.setTypeface(Typeface.create("sans-serif",style));t.setIncludeFontPadding(false);t.setLineSpacing(dp(2),1);return t;}
-    private TextView pill(String s,int color){TextView t=text(s,13,Typeface.BOLD,(color==accent||color==GREEN||color==PEACH||color==RED)?RoutixTheme.ink(color):TEXT);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(52));t.setPadding(dp(8),dp(8),dp(8),dp(8));t.setMaxLines(2);androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(t,11,15,1,android.util.TypedValue.COMPLEX_UNIT_SP);t.setBackground(surface(color,12));return t;}
-    private TextView compactMetric(String value,String label){TextView t=text(value+"  "+label,12,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setSingleLine(true);t.setBackground(surface(SURFACE2,14));return t;}
-    private TextView metric(String value,String label){TextView t=text(value+"\n"+label,13,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setBackground(surface(SURFACE,20));return t;}
-    private TextView bigMetric(String value,String label,int color){TextView t=text(value+"\n"+label,18,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setBackground(surface(theme.tint(color),24));return t;}
-    private TextView icon(String s){TextView t=text("",19,Typeface.BOLD,TEXT);t.setGravity(Gravity.CENTER);t.setPadding(dp(13),dp(13),dp(13),dp(13));String kind="◎".equals(s)?"locate":("↑".equals(s)||"N".equals(s))?"north":"more";TerrainIcon glyph=new TerrainIcon(kind,TEXT);glyph.setBounds(0,0,dp(22),dp(22));t.setCompoundDrawables(glyph,null,null,null);t.setBackground(surface(SURFACE2,12));return t;}
 
-    private TextView infoCard(String title,String body){TextView t=text(title+"\n"+body,12,Typeface.NORMAL,MUTED);t.setPadding(dp(14),dp(12),dp(14),dp(12));t.setBackground(surface(SURFACE,20));return t;}
-    private View stage(String number,String title,String sub,int color){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(12),dp(10),dp(12),dp(10));r.setBackground(surface(SURFACE,18));TextView n=text(number,12,Typeface.BOLD,color);n.setGravity(Gravity.CENTER);n.setBackground(surface(SURFACE2,14));r.addView(n,new LinearLayout.LayoutParams(dp(42),dp(42)));LinearLayout tx=new LinearLayout(this);tx.setOrientation(LinearLayout.VERTICAL);tx.setPadding(dp(11),0,0,0);tx.addView(text(title,13,Typeface.BOLD,TEXT));tx.addView(text(sub,11,Typeface.NORMAL,MUTED));r.addView(tx,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(7);r.setLayoutParams(lp);return r;}
-    private View summaryStat(String label,String value){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setGravity(Gravity.CENTER);c.addView(text(value,13,Typeface.BOLD,TEXT));c.addView(text(label,9,Typeface.BOLD,MUTED));return c;}
-    private GradientDrawable surface(int color,float radius){return RoutixTheme.surface(theme,color,radius>=90?99:radius<=16?12:22,getResources().getDisplayMetrics().density);}
+    private ScrollView scrollPanel(View panel){
+        ScrollView scroll=new ScrollView(this);
+        scroll.addView(panel);
+        return scroll;
+    }
+    private LinearLayout page(String title,String sub){
+        LinearLayout p=new LinearLayout(this);
+        p.setOrientation(LinearLayout.VERTICAL);
+        p.setPadding(dp(18),dp(16),dp(18),dp(28));
+        p.addView(text(title,28,Typeface.BOLD,TEXT));
+        if(sub!=null&&!sub.isEmpty()){
+            TextView subtitle=text(sub,12,Typeface.NORMAL,MUTED);
+            subtitle.setPadding(0,dp(5),0,dp(15));
+            p.addView(subtitle);
+        }else{
+            View gap=new View(this);
+            p.addView(gap,new LinearLayout.LayoutParams(1,dp(14)));
+        }
+        return p;
+    }
+    private TextView section(String label){
+        TextView t=text(label.toUpperCase(Locale.getDefault()),11,Typeface.BOLD,accent);
+        t.setLetterSpacing(.09f);
+        t.setPadding(dp(3),dp(24),0,dp(10));
+        return t;
+    }
+    private TextView text(String s,float size,int style,int color){
+        TextView t=new TextView(this);
+        t.setText(s);
+        t.setTextSize(Math.max(11,size));
+        t.setTextColor(theme.readable(color));
+        t.setTypeface(Typeface.create(style==Typeface.BOLD?"sans-serif-medium":"sans-serif",style));
+        t.setIncludeFontPadding(false);
+        t.setLineSpacing(dp(2),1);
+        return t;
+    }
+    private TextView pill(String s,int color){
+        TextView t=text(s,14,Typeface.BOLD,
+            (color==accent||color==GREEN||color==PEACH||color==RED)?RoutixTheme.ink(color):TEXT);
+        t.setGravity(Gravity.CENTER);
+        t.setMinHeight(dp(52));
+        t.setPadding(dp(10),dp(7),dp(10),dp(7));
+        t.setMaxLines(2);
+        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+            t,11,16,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+        t.setBackground(new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(theme.tint(accent)),
+            surface(color,20),null));
+        t.setClickable(true);
+        t.setFocusable(true);
+        return t;
+    }
+    private TextView compactMetric(String value,String label){
+        TextView t=text(value+"  "+label,12,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);
+        t.setMaxLines(2);
+        t.setBackground(surface(SURFACE2,16));
+        return t;
+    }
+    private TextView metric(String value,String label){
+        TextView t=text(value+"\n"+label,13,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(surface(SURFACE2,18));
+        return t;
+    }
+    private TextView bigMetric(String value,String label,int color){
+        TextView t=text(value+"\n"+label,18,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(surface(theme.tint(color),24));
+        return t;
+    }
+    private TextView icon(String s){
+        TextView t=text("",19,Typeface.BOLD,TEXT);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(12),dp(12),dp(12),dp(12));
+        String kind="◎".equals(s)?"locate":("↑".equals(s)||"N".equals(s))?"north":"more";
+        TerrainIcon glyph=new TerrainIcon(kind,TEXT);
+        glyph.setBounds(0,0,dp(23),dp(23));
+        t.setCompoundDrawables(glyph,null,null,null);
+        t.setBackground(new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(theme.tint(accent)),
+            surface(SURFACE,18),null));
+        t.setMinWidth(dp(48));t.setMinHeight(dp(48));
+        return t;
+    }
+    private TextView infoCard(String title,String body){
+        String joined=title+"\n"+body;
+        android.text.SpannableString span=new android.text.SpannableString(joined);
+        span.setSpan(new android.text.style.StyleSpan(Typeface.BOLD),0,title.length(),33);
+        span.setSpan(new android.text.style.ForegroundColorSpan(TEXT),0,title.length(),33);
+        TextView t=text("",13,Typeface.NORMAL,MUTED);
+        t.setText(span);
+        t.setLineSpacing(dp(5),1);
+        t.setPadding(dp(16),dp(15),dp(16),dp(15));
+        t.setBackground(surface(SURFACE,20));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+        lp.topMargin=dp(8);
+        t.setLayoutParams(lp);
+        return t;
+    }
+    private View stage(String number,String title,String sub,int color){
+        LinearLayout r=new LinearLayout(this);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(dp(13),dp(12),dp(13),dp(12));
+        r.setBackground(surface(SURFACE,20));
+        TextView n=text(number,13,Typeface.BOLD,color);
+        n.setGravity(Gravity.CENTER);
+        n.setBackground(surface(theme.tint(color),15));
+        r.addView(n,new LinearLayout.LayoutParams(dp(48),dp(48)));
+        LinearLayout tx=new LinearLayout(this);
+        tx.setOrientation(LinearLayout.VERTICAL);
+        tx.setPadding(dp(12),0,0,0);
+        tx.addView(text(title,14,Typeface.BOLD,TEXT));
+        tx.addView(text(sub,12,Typeface.NORMAL,MUTED));
+        r.addView(tx,new LinearLayout.LayoutParams(0,-2,1));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+        lp.topMargin=dp(8);
+        r.setLayoutParams(lp);
+        return r;
+    }
+    private View summaryStat(String label,String value){
+        LinearLayout c=new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setGravity(Gravity.CENTER);
+        c.addView(text(value,14,Typeface.BOLD,TEXT));
+        TextView caption=text(label,10,Typeface.BOLD,MUTED);
+        caption.setLetterSpacing(.04f);
+        c.addView(caption);
+        return c;
+    }
+    private GradientDrawable surface(int color,float radius){
+        return RoutixTheme.surface(theme,color,Math.round(radius),getResources().getDisplayMetrics().density);
+    }
 
     private void press(View v){if(v==null)return;if(prefs.getBoolean("haptics",true))v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);if(RoutixTheme.motion(prefs)&&!(guiding&&prefs.getBoolean("battery_saver",true)))v.animate().scaleX(.94f).scaleY(.94f).setDuration(70).withEndAction(()->v.animate().scaleX(1).scaleY(1).setDuration(150).start()).start();}
     private int animDuration(){return prefs.getInt("anim_speed",220);}
@@ -633,9 +1243,43 @@ public class RoutixActivity extends AppCompatActivity {
         }
     }
     private void applyRuntimePrefs(){boolean saver=prefs.getBoolean("battery_saver",true);if((recording||guiding)&&!saver&&prefs.getBoolean("keep_screen",false))getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(headerSpeed!=null)headerSpeed.setVisibility(prefs.getBoolean("show_speed",true)?View.VISIBLE:View.GONE);}
-    private void positionChrome(){if(root==null||topBar==null||dock==null||contentHost==null)return;boolean compact=guiding&&"map".equals(selectedTab);int top=systemTop+dp(compact?4:8),bottom=systemBottom+dp(compact?4:8),topH=dp(compact?50:64),dockH=dp(compact?50:70);FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);hp.setMargins(dp(10),top,dp(10),0);topBar.setLayoutParams(hp);FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);dpv.setMargins(dp(10),0,dp(10),bottom);dock.setLayoutParams(dpv);if(modern!=null)modern.inset(top+topH);if(mapAttribution!=null){FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.BOTTOM|Gravity.START);ml.setMargins(dp(12),0,0,bottom+dockH+dp(10));mapAttribution.setLayoutParams(ml);}if("map".equals(selectedTab)){FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);cp.setMargins(dp(compact?6:10),0,dp(compact?6:10),bottom+dockH+dp(compact?5:8));contentHost.setLayoutParams(cp);}else{FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));contentHost.setLayoutParams(cp);}}
 
-    private void createModernMap(){if(modern!=null)return;renderedTracePoints=-1;modern=new ModernMapController(this,root,createPositionIcon(prefs.getString("position_icon","Camion")),mapState);modern.onStart();modern.setVisible(!offline&&"map".equals(selectedTab));positionChrome();}
+    private void positionChrome(){
+        if(root==null||topBar==null||dock==null||contentHost==null)return;
+        boolean guide=guiding&&"map".equals(selectedTab);
+        int top=systemTop+dp(8),bottom=systemBottom+dp(8);
+        int topH=dp(64),dockH=dp(76);
+        FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-1,topH,Gravity.TOP);
+        hp.setMargins(dp(10),top,dp(10),0);
+        topBar.setLayoutParams(hp);
+        FrameLayout.LayoutParams dpv=new FrameLayout.LayoutParams(-1,dockH,Gravity.BOTTOM);
+        dpv.setMargins(dp(10),0,dp(10),bottom);
+        dock.setLayoutParams(dpv);
+        if(modern!=null)modern.inset(top+topH);
+        if(mapAttribution!=null){
+            FrameLayout.LayoutParams ml=new FrameLayout.LayoutParams(-2,dp(22),Gravity.TOP|Gravity.START);
+            ml.setMargins(dp(12),top+topH+dp(6),0,0);
+            mapAttribution.setLayoutParams(ml);
+        }
+        if("map".equals(selectedTab)){
+            FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);
+            cp.setMargins(dp(10),0,dp(10),bottom+dockH+dp(8));
+            contentHost.setLayoutParams(cp);
+        }else if("record".equals(selectedTab)){
+            int screen=root.getHeight()>0?root.getHeight():getResources().getDisplayMetrics().heightPixels;
+            int available=Math.max(dp(90),screen-top-topH-bottom-dockH-dp(18));
+            int height=Math.min(dp(recordSheetExpanded?584:332),available);
+            FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,height,Gravity.BOTTOM);
+            cp.setMargins(dp(10),0,dp(10),bottom+dockH+dp(8));
+            contentHost.setLayoutParams(cp);
+        }else{
+            FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(-1,-1);
+            cp.setMargins(0,top+topH+dp(8),0,bottom+dockH+dp(8));
+            contentHost.setLayoutParams(cp);
+        }
+    }
+
+    private void createModernMap(){if(modern!=null)return;renderedTracePoints=-1;modern=new ModernMapController(this,root,createPositionIcon(prefs.getString("position_icon","Camion")),mapState);modern.onStart();modern.setVisible(!offline&&("map".equals(selectedTab)||"record".equals(selectedTab)));positionChrome();}
     @Override protected void onStart(){super.onStart();if(modern==null)createModernMap();else modern.onStart();bound=bindService(new Intent(this,TrackingService.class),connection,BIND_AUTO_CREATE);}
     @Override protected void onResume(){super.onResume();visible=true;if(map!=null&&offline)map.onResume();if(modern!=null)modern.onResume();if(tracker!=null)tracker.observe(this::syncTracking);}
     @Override protected void onPause(){visible=false;if(tracker!=null)tracker.observe(null);if(modern!=null)modern.onPause();if(map!=null)map.onPause();super.onPause();}
@@ -650,7 +1294,7 @@ public class RoutixActivity extends AppCompatActivity {
         }
         super.onBackPressed();
     }
-    @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("workspace",selectedTab);if(detailFile!=null)out.putString("detail_file",detailFile.getName());if(modern!=null)modern.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("workspace",selectedTab);out.putBoolean("record_sheet_expanded",recordSheetExpanded);if(detailFile!=null)out.putString("detail_file",detailFile.getName());if(modern!=null)modern.onSaveInstanceState(out);}
     @Override public void onLowMemory(){super.onLowMemory();if(modern!=null)modern.onLowMemory();if(map!=null)map.getTileProvider().clearTileCache();}
     @Override protected void onDestroy(){guidanceSession++;if(modern!=null)modern.onDestroy();if(map!=null)map.onDetach();super.onDestroy();}
 }
